@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Use Case Prioritization Survey</title>
+<style>
+  :root {
+    --ink: #1a2333; --muted: #5b6575; --line: #dde3ec; --bg: #f4f6fa;
+    --card: #ffffff; --accent: #1f6feb; --accent-soft: #e7f0fe;
+    --best: #1a7f37; --best-soft: #e6f4ea; --worst: #b35900; --worst-soft: #fdf0e3;
+    --danger: #c93c37;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    background: var(--bg); color: var(--ink); line-height: 1.45; min-height: 100vh;
+  }
+  header {
+    position: sticky; top: 0; z-index: 10; background: var(--card);
+    border-bottom: 1px solid var(--line); padding: 10px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  header .htitle { font-weight: 600; font-size: 15px; flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #exitBtn {
+    border: 1px solid var(--line); background: var(--card); color: var(--muted);
+    border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer; display: none;
+  }
+  #exitBtn:hover { border-color: var(--accent); color: var(--accent); }
+  #progressWrap { height: 4px; background: var(--line); }
+  #progressBar { height: 4px; width: 0%; background: var(--accent); transition: width .3s; }
+  main { max-width: 780px; margin: 0 auto; padding: 20px 16px 60px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 26px; margin-top: 18px; }
+  h1 { font-size: 24px; margin-bottom: 10px; }
+  h2 { font-size: 19px; margin-bottom: 8px; }
+  p { margin-bottom: 10px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .small { font-size: 13px; }
+  label { display: block; font-weight: 600; font-size: 14px; margin: 14px 0 4px; }
+  input[type=text], input[type=email], select {
+    width: 100%; padding: 10px 12px; font-size: 15px; border: 1px solid var(--line);
+    border-radius: 8px; background: #fff; color: var(--ink);
+  }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .btn {
+    display: inline-block; border: none; border-radius: 10px; padding: 12px 22px;
+    font-size: 15px; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff;
+  }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.secondary { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
+  .btn.big { width: 100%; text-align: left; padding: 16px 18px; margin-top: 12px; }
+  .btnrow { margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .famrow { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .famrow button {
+    flex: 1; min-width: 52px; padding: 10px 6px; border: 1px solid var(--line);
+    background: #fff; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--ink);
+  }
+  .famrow button[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); font-weight: 700; }
+  .famlabels { display: flex; justify-content: space-between; margin-top: 3px; }
+  .error { color: var(--danger); font-size: 13px; margin-top: 8px; min-height: 18px; }
+  .notice { background: var(--worst-soft); border: 1px solid #ecc9a0; border-radius: 8px;
+    padding: 10px 12px; font-size: 13px; margin-top: 12px; display: none; }
+
+  /* --- task screen --- */
+  .taskhead { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 2px 10px; }
+  .taskq { font-size: 16px; font-weight: 600; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
+    padding: 14px; display: flex; flex-direction: column; gap: 8px; transition: border-color .12s, box-shadow .12s;
+  }
+  .card.isBest { border-color: var(--best); box-shadow: 0 0 0 2px var(--best-soft); }
+  .card.isWorst { border-color: var(--worst); box-shadow: 0 0 0 2px var(--worst-soft); }
+  .cardtop { cursor: pointer; }
+  .cardname { font-weight: 600; font-size: 15px; }
+  .chip { display: inline-block; font-size: 11.5px; color: var(--muted); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; margin-top: 5px; }
+  .keyhint { float: right; color: var(--muted); font-size: 12px; border: 1px solid var(--line);
+    border-radius: 5px; padding: 0 6px; }
+  .desc { font-size: 13.5px; color: var(--muted); display: none; }
+  .card.open .desc { display: block; }
+  .pickrow { display: flex; gap: 8px; margin-top: auto; }
+  .pickrow button {
+    flex: 1; padding: 9px 4px; font-size: 13.5px; font-weight: 600; border-radius: 8px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--muted);
+  }
+  .pickrow .pickBest[aria-pressed=true] { background: var(--best); border-color: var(--best); color: #fff; }
+  .pickrow .pickWorst[aria-pressed=true] { background: var(--worst); border-color: var(--worst); color: #fff; }
+  .taskfoot { display: flex; gap: 10px; margin-top: 16px; align-items: center; }
+  #skipBtn { background: none; border: none; color: var(--muted); font-size: 13.5px;
+    cursor: pointer; text-decoration: underline; }
+  .spacer { flex: 1; }
+  .kbd { color: var(--muted); font-size: 12.5px; }
+
+  .bigstat { font-size: 34px; font-weight: 700; }
+  textarea#copyArea { width: 100%; height: 140px; font-family: ui-monospace, Consolas, monospace;
+    font-size: 11px; margin-top: 10px; display: none; }
+  .checkmark { color: var(--best); font-weight: 700; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+</style>
+</head>
+<body>
+<header>
+  <div class="htitle" id="hTitle">Use Case Prioritization Survey</div>
+  <button id="exitBtn" type="button">Exit &amp; download</button>
+</header>
+<div id="progressWrap"><div id="progressBar"></div></div>
+<main>
+
+  <section id="screen-intro" class="screen">
+    <div class="panel">
+      <h1 id="introTitle"></h1>
+      <p id="introText"></p>
+      <p class="muted small">Your answers stay on this computer until you send us the
+        results file at the end. <strong>You can stop at any time — every screen you
+        complete counts.</strong></p>
+      <div class="notice" id="storageNotice">Heads up: this browser is not letting the
+        survey save progress locally. Your answers are safe while this tab stays open —
+        use “Exit &amp; download” before closing it.</div>
+      <div class="btnrow">
+        <button class="btn" id="startBtn" type="button">Start</button>
+        <button class="btn secondary" id="resumeBtn" type="button" style="display:none">Resume my previous session</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-meta" class="screen">
+    <div class="panel">
+      <h2>About you</h2>
+      <p class="muted small">Used to group results (for example, how operators’ priorities
+        differ from maintainers’) and to follow up if your answers raise good questions.</p>
+      <label for="fName">Name</label>
+      <input type="text" id="fName" autocomplete="name">
+      <label for="fEmail">Email</label>
+      <input type="email" id="fEmail" autocomplete="email">
+      <label for="fRole">Your role</label>
+      <select id="fRole"></select>
+      <label for="fOrg">Your organization</label>
+      <select id="fOrg"></select>
+      <label>How familiar are you with this system and its use cases?</label>
+      <div class="famrow" id="famRow" role="group" aria-label="Familiarity, 1 low to 5 high"></div>
+      <div class="famlabels"><span class="muted small">1 — new to it</span><span class="muted small">5 — expert</span></div>
+      <div class="error" id="metaError"></div>
+      <div class="btnrow"><button class="btn" id="metaNext" type="button">Continue</button></div>
+    </div>
+  </section>
+
+  <section id="screen-budget" class="screen">
+    <div class="panel">
+      <h2>How much time can you give us?</h2>
+      <p class="muted">Both options produce useful data. More time lets us compute your
+        personal priority profile, not just your contribution to the group picture.
+        You can always stop early — or keep going longer.</p>
+      <div id="budgetButtons"></div>
+    </div>
+  </section>
+
+  <section id="screen-task" class="screen">
+    <div class="taskhead">
+      <div class="taskq">Which is <span style="color:var(--best)">most</span> important?
+        Which is <span style="color:var(--worst)">least</span>?</div>
+      <div class="muted small" id="taskCount"></div>
+    </div>
+    <div class="cards" id="cards"></div>
+    <div class="taskfoot">
+      <button id="skipBtn" type="button">Skip this set</button>
+      <span class="spacer"></span>
+      <span class="kbd">Keys: 1–4 pick most, then least · Enter next</span>
+      <button class="btn" id="nextBtn" type="button" disabled>Next</button>
+    </div>
+    <p class="muted small" style="margin-top:8px">Tap a use case name to read its description.</p>
+  </section>
+
+  <section id="screen-break" class="screen">
+    <div class="panel">
+      <h2>Nice pace. Quick breather?</h2>
+      <p><span class="bigstat" id="breakDone"></span></p>
+      <p class="muted" id="breakLeft"></p>
+      <div class="btnrow">
+        <button class="btn" id="breakContinue" type="button">Keep going</button>
+        <button class="btn secondary" id="breakFinish" type="button">Finish &amp; download my results</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-finish" class="screen">
+    <div class="panel">
+      <h2 id="finishTitle">Thank you!</h2>
+      <p id="finishSummary"></p>
+      <p class="muted small">Last step — takes ten seconds:</p>
+      <p><strong>1.</strong> Download your results file.<br>
+         <strong>2.</strong> Send it back to us (email or the shared folder in the invitation).</p>
+      <div class="btnrow">
+        <button class="btn" id="downloadBtn" type="button">Download results file</button>
+        <button class="btn secondary" id="copyBtn" type="button">Copy results to clipboard</button>
+      </div>
+      <p class="small" id="downloadOk" style="display:none;margin-top:10px"><span class="checkmark">✓</span> Saved. Please email the file back — that’s it!</p>
+      <textarea id="copyArea" readonly aria-label="Survey results JSON"></textarea>
+      <div class="btnrow" id="moreRow" style="display:none">
+        <button class="btn secondary" id="moreBtn" type="button"></button>
+      </div>
+      <div class="btnrow" id="resumeRow" style="display:none">
+        <button class="btn secondary" id="backToTask" type="button">Go back and answer more</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+<script id="survey-data" type="application/json">__SURVEY_DATA__</script>
+<script>
+"use strict";
+/* ============================================================
+   Use-case prioritization survey — single-file app, no network.
+   Data is injected at build time by build_survey.py.
+   ============================================================ */
+
+//<RNG-PARITY-START>  (this block is executed by tests/test_js_parity.py in Node
+//                     and must stay in lockstep with ucsurvey/rng.py + design.py)
+function xmur3(str) {
+  var h = 1779033703 ^ str.length;
+  for (var i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function () {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return (h ^= h >>> 16) >>> 0;
+  };
+}
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function seededRng(seedStr) { return mulberry32(xmur3(seedStr)()); }
+function shuffled(items, rand) {
+  var arr = items.slice();
+  for (var i = arr.length - 1; i > 0; i--) {
+    var j = Math.floor(rand() * (i + 1));
+    var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  }
+  return arr;
+}
+function deriveRespondentSets(master, itemIds, seedStr) {
+  var rand = seededRng(seedStr);
+  var perm = shuffled(itemIds, rand);
+  var relabel = {};
+  itemIds.forEach(function (item, i) { relabel[item] = perm[i]; });
+  var sets = master.map(function (s) { return s.map(function (it) { return relabel[it]; }); });
+  sets = shuffled(sets, rand);
+  return sets.map(function (s) { return shuffled(s, rand); });
+}
+//<RNG-PARITY-END>
+
+var DATA = JSON.parse(document.getElementById("survey-data").textContent);
+var ITEMS = {};
+DATA.catalog.forEach(function (it) { ITEMS[it.id] = it; });
+var ITEM_IDS = DATA.catalog.map(function (it) { return it.id; });
+
+var state = null;          // the session object (mirrors the result JSON)
+var screenShownAt = null;  // for responseMs
+var pickPhase = "best";    // keyboard helper: next 1-4 press picks best or worst
+var storageOk = false;
+
+/* ---------- storage ---------- */
+var STORE_PREFIX = "ucsurvey." + DATA.catalogVersionHash + ".";
+function checkStorage() {
+  try {
+    var k = STORE_PREFIX + "__test__";
+    localStorage.setItem(k, "1");
+    storageOk = localStorage.getItem(k) === "1";
+    localStorage.removeItem(k);
+  } catch (e) { storageOk = false; }
+  if (!storageOk) document.getElementById("storageNotice").style.display = "block";
+}
+function saveState() {
+  if (!storageOk || !state) return;
+  try { localStorage.setItem(STORE_PREFIX + state.sessionId, JSON.stringify(state)); } catch (e) {}
+}
+function findSavedSessions() {
+  if (!storageOk) return [];
+  var out = [];
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k.indexOf(STORE_PREFIX) === 0 && k.indexOf("__test__") < 0) {
+        try { out.push(JSON.parse(localStorage.getItem(k))); } catch (e) {}
+      }
+    }
+  } catch (e) {}
+  out.sort(function (a, b) { return (b.startedAt || "").localeCompare(a.startedAt || ""); });
+  return out;
+}
+
+/* ---------- design ---------- */
+function planScreens(st) {
+  // Rebuild the full planned screen list deterministically from the seed:
+  // the arm's master + any "keep going" continuation blocks appended so far.
+  var plan = deriveRespondentSets(DATA.arms[st.arm].master, ITEM_IDS, st.designSeed);
+  for (var b = 1; b <= st.extraBlocks; b++) {
+    plan = plan.concat(deriveRespondentSets(DATA.continuationMaster, ITEM_IDS, st.designSeed + "|cont" + b));
+  }
+  return plan;
+}
+function currentExposure(st) {
+  return DATA.arms[st.arm].exposure + st.extraBlocks;
+}
+
+/* ---------- screens ---------- */
+function show(id) {
+  document.querySelectorAll(".screen").forEach(function (s) { s.classList.remove("active"); });
+  document.getElementById(id).classList.add("active");
+  document.getElementById("exitBtn").style.display =
+    (state && id !== "screen-intro" && id !== "screen-finish") ? "inline-block" : "none";
+  window.scrollTo(0, 0);
+}
+function fmtMin(nScreens) {
+  var m = Math.round(nScreens * DATA.secondsPerScreen / 60);
+  return m < 1 ? "under a minute" : "about " + m + " min";
+}
+function updateProgress() {
+  var total = state ? state.plannedScreens : 1;
+  var done = state ? state.sets.length : 0;
+  document.getElementById("progressBar").style.width =
+    Math.min(100, Math.round(100 * done / Math.max(total, 1))) + "%";
+}
+
+/* ---------- intro / metadata ---------- */
+function initIntro() {
+  document.title = DATA.title;
+  document.getElementById("hTitle").textContent = DATA.title;
+  document.getElementById("introTitle").textContent = DATA.title;
+  document.getElementById("introText").textContent = DATA.intro;
+  var saved = findSavedSessions().filter(function (s) { return s.sets.length > 0 && !s.finished; });
+  if (saved.length > 0) {
+    var btn = document.getElementById("resumeBtn");
+    btn.style.display = "inline-block";
+    btn.onclick = function () {
+      state = saved[0];
+      state.plan = planScreens(state);
+      updateProgress();
+      nextTask();
+    };
+  }
+  document.getElementById("startBtn").onclick = function () { show("screen-meta"); };
+}
+function fillSelect(id, options) {
+  var sel = document.getElementById(id);
+  sel.innerHTML = "";
+  var ph = document.createElement("option");
+  ph.value = ""; ph.textContent = "— choose —";
+  sel.appendChild(ph);
+  options.forEach(function (o) {
+    var op = document.createElement("option");
+    op.value = o; op.textContent = o; sel.appendChild(op);
+  });
+}
+var famValue = 0;
+function initMeta() {
+  fillSelect("fRole", DATA.roles);
+  fillSelect("fOrg", DATA.organizations);
+  var row = document.getElementById("famRow");
+  for (var v = 1; v <= 5; v++) {
+    (function (val) {
+      var b = document.createElement("button");
+      b.type = "button"; b.textContent = val; b.setAttribute("aria-pressed", "false");
+      b.onclick = function () {
+        famValue = val;
+        row.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
+        b.setAttribute("aria-pressed", "true");
+      };
+      row.appendChild(b);
+    })(v);
+  }
+  document.getElementById("metaNext").onclick = function () {
+    var name = document.getElementById("fName").value.trim();
+    var email = document.getElementById("fEmail").value.trim();
+    var role = document.getElementById("fRole").value;
+    var org = document.getElementById("fOrg").value;
+    var err = "";
+    if (!name) err = "Please enter your name.";
+    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) err = "Please enter a valid email address.";
+    else if (!role) err = "Please choose your role.";
+    else if (!org) err = "Please choose your organization.";
+    else if (!famValue) err = "Please rate your familiarity (1–5).";
+    document.getElementById("metaError").textContent = err;
+    if (err) return;
+    var sessionId = "s" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 1e8).toString(36);
+    state = {
+      schemaVersion: 1,
+      tool: "ucsurvey",
+      sessionId: sessionId,
+      respondent: { name: name, email: email.toLowerCase(), role: role, organization: org, familiarity: famValue },
+      catalogVersionHash: DATA.catalogVersionHash,
+      arm: null,
+      designSeed: email.toLowerCase() + "|" + sessionId,
+      startedAt: new Date().toISOString(),
+      extraBlocks: 0,
+      plannedScreens: 0,
+      finished: false,
+      sets: []
+    };
+    initBudget();
+    show("screen-budget");
+  };
+}
+function initBudget() {
+  var wrap = document.getElementById("budgetButtons");
+  wrap.innerHTML = "";
+  Object.keys(DATA.arms).forEach(function (armKey) {
+    var arm = DATA.arms[armKey];
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "btn big secondary";
+    b.innerHTML = "<strong>" + arm.label + "</strong><br><span class='muted small'>" +
+      arm.master.length + " quick screens · " + fmtMin(arm.master.length) +
+      " · every use case shown " + arm.exposure + "×</span>";
+    b.onclick = function () {
+      state.arm = armKey;
+      state.plannedScreens = arm.master.length;
+      state.plan = planScreens(state);
+      saveState();
+      updateProgress();
+      nextTask();
+    };
+    wrap.appendChild(b);
+  });
+}
+
+/* ---------- the task loop ---------- */
+var currentPick = { best: null, worst: null };
+function nextTask() {
+  if (state.sets.length >= state.plan.length) { finish(false); return; }
+  var justFinishedBlock = state.sets.length > 0 && state.sets.length % DATA.screensPerBlock === 0;
+  if (justFinishedBlock && !state._breakShown) {
+    state._breakShown = true;
+    showBreak();
+    return;
+  }
+  state._breakShown = false;
+  renderTask();
+  show("screen-task");
+}
+function renderTask() {
+  var idx = state.sets.length;
+  var shown = state.plan[idx];
+  currentPick = { best: null, worst: null };
+  pickPhase = "best";
+  document.getElementById("nextBtn").disabled = true;
+  document.getElementById("taskCount").textContent = "Screen " + (idx + 1) + " of " + state.plan.length;
+  var wrap = document.getElementById("cards");
+  wrap.innerHTML = "";
+  shown.forEach(function (itemId, pos) {
+    var it = ITEMS[itemId];
+    var card = document.createElement("div");
+    card.className = "card"; card.dataset.item = itemId;
+    var top = document.createElement("div");
+    top.className = "cardtop";
+    top.innerHTML = "<span class='keyhint'>" + (pos + 1) + "</span>" +
+      "<div class='cardname'></div>" +
+      (it.category ? "<span class='chip'></span>" : "");
+    top.querySelector(".cardname").textContent = it.name;
+    if (it.category) top.querySelector(".chip").textContent = it.category;
+    top.onclick = function () { card.classList.toggle("open"); };
+    var desc = document.createElement("div");
+    desc.className = "desc"; desc.textContent = it.description || "(no description)";
+    var picks = document.createElement("div");
+    picks.className = "pickrow";
+    var bb = document.createElement("button");
+    bb.type = "button"; bb.className = "pickBest"; bb.textContent = "Most important";
+    bb.setAttribute("aria-pressed", "false");
+    bb.onclick = function () { setPick("best", itemId); };
+    var wb = document.createElement("button");
+    wb.type = "button"; wb.className = "pickWorst"; wb.textContent = "Least important";
+    wb.setAttribute("aria-pressed", "false");
+    wb.onclick = function () { setPick("worst", itemId); };
+    picks.appendChild(bb); picks.appendChild(wb);
+    card.appendChild(top); card.appendChild(desc); card.appendChild(picks);
+    wrap.appendChild(card);
+  });
+  screenShownAt = Date.now();
+}
+function setPick(kind, itemId) {
+  var other = kind === "best" ? "worst" : "best";
+  if (currentPick[other] === itemId) currentPick[other] = null; // can't be both
+  currentPick[kind] = currentPick[kind] === itemId ? null : itemId;
+  document.querySelectorAll("#cards .card").forEach(function (card) {
+    var id = card.dataset.item;
+    card.classList.toggle("isBest", currentPick.best === id);
+    card.classList.toggle("isWorst", currentPick.worst === id);
+    card.querySelector(".pickBest").setAttribute("aria-pressed", String(currentPick.best === id));
+    card.querySelector(".pickWorst").setAttribute("aria-pressed", String(currentPick.worst === id));
+  });
+  pickPhase = currentPick.best === null ? "best" : "worst";
+  document.getElementById("nextBtn").disabled = !(currentPick.best && currentPick.worst);
+}
+function recordSet(skipped) {
+  var idx = state.sets.length;
+  state.sets.push({
+    index: idx,
+    shown: state.plan[idx].slice(),
+    best: skipped ? null : currentPick.best,
+    worst: skipped ? null : currentPick.worst,
+    skipped: skipped,
+    answeredAt: new Date().toISOString(),
+    responseMs: Date.now() - screenShownAt
+  });
+  saveState();
+  updateProgress();
+  nextTask();
+}
+function showBreak() {
+  document.getElementById("breakDone").textContent = state.sets.length + " screens done";
+  var left = state.plan.length - state.sets.length;
+  document.getElementById("breakLeft").textContent =
+    left + " to go (" + fmtMin(left) + "). Every answer so far is already saved.";
+  document.getElementById("breakContinue").onclick = function () { renderTask(); show("screen-task"); };
+  document.getElementById("breakFinish").onclick = function () { finish(true); };
+  show("screen-break");
+}
+
+/* ---------- finish / export ---------- */
+function buildResult() {
+  return {
+    schemaVersion: state.schemaVersion,
+    tool: state.tool,
+    sessionId: state.sessionId,
+    respondent: state.respondent,
+    catalogVersionHash: state.catalogVersionHash,
+    arm: state.arm,
+    designSeed: state.designSeed,
+    startedAt: state.startedAt,
+    exportedAt: new Date().toISOString(),
+    plannedScreens: state.plan ? state.plan.length : state.plannedScreens,
+    extraBlocks: state.extraBlocks,
+    sets: state.sets
+  };
+}
+function finish(early) {
+  var answered = state.sets.filter(function (s) { return !s.skipped; }).length;
+  var complete = state.plan && state.sets.length >= state.plan.length;
+  if (complete) state.finished = true;
+  saveState();
+  document.getElementById("finishTitle").textContent =
+    answered === 0 ? "No answers yet" : "Thank you!";
+  document.getElementById("finishSummary").textContent =
+    answered === 0
+      ? "You haven't answered any screens. You can go back and answer a few — even two or three help."
+      : "You compared use cases on " + answered + " screens" +
+        (complete ? " — the full set. " : ". ") +
+        "Your answers are packaged below.";
+  document.getElementById("resumeRow").style.display = complete ? "none" : "flex";
+  document.getElementById("backToTask").onclick = function () { nextTask(); };
+  var moreRow = document.getElementById("moreRow");
+  var canMore = complete && currentExposure(state) < DATA.maxExposure;
+  moreRow.style.display = canMore ? "flex" : "none";
+  if (canMore) {
+    var mb = document.getElementById("moreBtn");
+    mb.textContent = "I have time for more (+" + DATA.continuationMaster.length +
+      " screens, " + fmtMin(DATA.continuationMaster.length) + ")";
+    mb.onclick = function () {
+      state.extraBlocks += 1;
+      state.finished = false;
+      state.plan = planScreens(state);
+      state.plannedScreens = state.plan.length;
+      saveState();
+      updateProgress();
+      nextTask();
+    };
+  }
+  show("screen-finish");
+}
+function resultFilename() {
+  var slug = state.respondent.email.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "");
+  return "usecase-survey_" + slug + "_" + state.sessionId + ".json";
+}
+function doDownload() {
+  var json = JSON.stringify(buildResult(), null, 1);
+  try {
+    var blob = new Blob([json], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = resultFilename();
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    document.getElementById("downloadOk").style.display = "block";
+  } catch (e) {
+    showCopyArea(json, "Automatic download failed — copy the text below and email it to us.");
+  }
+}
+function showCopyArea(json, msg) {
+  var ta = document.getElementById("copyArea");
+  ta.value = json; ta.style.display = "block";
+  ta.focus(); ta.select();
+  if (msg) alert(msg);
+}
+function doCopy() {
+  var json = JSON.stringify(buildResult(), null, 1);
+  function fallback() {
+    var ta = document.getElementById("copyArea");
+    ta.value = json; ta.style.display = "block"; ta.focus(); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(json).then(function () {
+      document.getElementById("downloadOk").style.display = "block";
+    }, fallback);
+  } else fallback();
+}
+
+/* ---------- keyboard ---------- */
+document.addEventListener("keydown", function (ev) {
+  if (!document.getElementById("screen-task").classList.contains("active")) return;
+  if (ev.key >= "1" && ev.key <= "4") {
+    var pos = parseInt(ev.key, 10) - 1;
+    var cards = document.querySelectorAll("#cards .card");
+    if (pos < cards.length) setPick(pickPhase, cards[pos].dataset.item);
+  } else if (ev.key === "Enter" && !document.getElementById("nextBtn").disabled) {
+    recordSet(false);
+  }
+});
+
+/* ---------- wire up ---------- */
+document.getElementById("nextBtn").onclick = function () { recordSet(false); };
+document.getElementById("skipBtn").onclick = function () { recordSet(true); };
+document.getElementById("exitBtn").onclick = function () { finish(true); };
+document.getElementById("downloadBtn").onclick = doDownload;
+document.getElementById("copyBtn").onclick = doCopy;
+
+checkStorage();
+initIntro();
+initMeta();
+show("screen-intro");
+</script>
+</body>
+</html>
