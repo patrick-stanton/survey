@@ -1,0 +1,55 @@
+id,name,description,category,supersedes,owner,maturity,sourceDoc
+UC-001,Schedule a contact window,Reserve antenna time and configure the ground station for an upcoming satellite pass.,Contact Operations,,jgarcia,baselined,CONOPS-3.1
+UC-002,Execute a routine pass,Run a scheduled contact end-to-end: acquire signal downlink telemetry uplink commands release.,Contact Operations,,jgarcia,baselined,CONOPS-3.1
+UC-003,Handle a missed pass,Detect a failed acquisition and automatically rebook the next available contact window.,Contact Operations,,jgarcia,draft,CONOPS-3.2
+,Command a constellation broadcast,Send one validated command sequence to many satellites over successive passes.,Contact Operations,,mchen,draft,CONOPS-3.4
+,Prioritize emergency contacts,Preempt the contact schedule when a spacecraft declares a fault condition.,Contact Operations,,mchen,draft,
+,Monitor pass in real time,Watch live telemetry and link quality during a contact with alerting on limit violations.,Contact Operations,,mchen,baselined,CONOPS-3.1
+UC-007,Trend spacecraft telemetry,Plot any telemetry channel across weeks or months and overlay related channels.,Fleet Health,,priyap,baselined,SRS-410
+UC-008,Detect telemetry anomalies,Flag unusual telemetry patterns automatically for engineer review.,Fleet Health,,priyap,draft,SRS-412
+,Manage alert thresholds,Define and version the limit sets that trigger caution and warning alerts.,Fleet Health,,priyap,draft,SRS-415
+,Review fleet status at a glance,See health rollup of every satellite on one dashboard with drill-down.,Fleet Health,,tokafor,baselined,SRS-401
+,Investigate a fault timeline,Reconstruct the sequence of events telemetry and commands around an anomaly.,Fleet Health,,tokafor,draft,
+,Generate health reports,Produce recurring fleet health summaries for the program office.,Fleet Health,,tokafor,draft,SRS-430
+,Predict component degradation,,Fleet Health,,tokafor,concept,
+UC-014,Plan an orbit maneuver,Design a delta-v maneuver with fuel estimate and updated ephemeris products.,Flight Dynamics,,lnovak,baselined,FD-SPEC-2
+UC-015,Screen for conjunctions,Ingest external tracking data and warn on close-approach events.,Flight Dynamics,,lnovak,baselined,FD-SPEC-4
+,Maintain orbit knowledge,Update orbit determination from ranging and telemetry after each contact.,Flight Dynamics,,lnovak,baselined,FD-SPEC-1
+,Generate pointing products,Compute antenna pointing and pass geometry files for each site and pass.,Flight Dynamics,,lnovak,draft,
+,Plan deorbit operations,,Flight Dynamics,,lnovak,concept,
+,Coordinate maneuver with partners,Share planned maneuvers with external agencies and deconflict timing.,Flight Dynamics,,dwhite,concept,
+,Ingest new mission payload data,Receive process and catalog payload downlink data with quality checks.,Payload & Data,,dwhite,baselined,PDD-1.0
+,Task payload collection,Build and validate a payload tasking request against constraints then schedule uplink.,Payload & Data,,dwhite,baselined,PDD-1.2
+,Deliver products to users,Package and distribute finished data products to subscribed consumers.,Payload & Data,,dwhite,draft,PDD-2.0
+,Reprocess archived data,Re-run processing over historical raw data after algorithm updates.,Payload & Data,,ryamada,draft,
+,Monitor processing backlog,Track queue depth latency and failures across the data processing chain.,Payload & Data,,ryamada,draft,PDD-2.3
+,Manage data retention,Apply retention and archival policy across raw and derived data stores.,Payload & Data,,ryamada,concept,
+UC-026,Authenticate an operator,Log in with enterprise credentials and hardware token.,Security & IA,,sgreen,baselined,IA-100
+,Authorize by crew position,Enforce role-based command authority: which console can send which commands.,Security & IA,,sgreen,baselined,IA-110
+,Audit all commanding,Keep a tamper-evident record of every command sent by whom from where.,Security & IA,,sgreen,baselined,IA-120
+,Manage cryptographic keys,Load rotate and destroy comsec keys across ground and space segments.,Security & IA,,sgreen,draft,IA-140
+,Detect ground intrusion,Alert on suspicious activity across ground segment networks.,Security & IA,,sgreen,draft,
+,Sanitize released products,,Security & IA,,htran,concept,
+,Train a new console operator,Run guided practice scenarios against a simulated spacecraft.,Ops Support,,htran,draft,TNG-10
+,Certify crew proficiency,Track completion of certification requirements per crew position.,Ops Support,,htran,draft,TNG-12
+,Rehearse anomaly procedures,Exercise the crew against injected fault scenarios and score the response.,Ops Support,,htran,concept,
+,Maintain operational procedures,Author review and version the procedures the crew executes.,Ops Support,,kjones,baselined,OPS-200
+,Execute a procedure interactively,Step through an approved procedure with auto-verification of expected telemetry.,Ops Support,,kjones,draft,OPS-210
+,Hand over between shifts,Capture shift notes open items and watch conditions for the incoming crew.,Ops Support,,kjones,draft,
+,Manage configuration baselines,Track approved versions of ground software databases and spacecraft tables.,Ops Support,,kjones,baselined,CM-3
+,Update ground software,Roll out ground segment software updates through test and into operations.,Ops Support,,avolkov,draft,CM-8
+,Failover to backup site,Transfer operations to the alternate ops center with minimal contact loss.,Ops Support,,avolkov,draft,COOP-1
+UC-041,Plan integrated operations,Merge contact payload and maneuver plans into one deconflicted fleet timeline.,Mission Planning,UC-090;UC-091,avolkov,draft,MP-PLAN-9
+,Model what-if scenarios,Branch the operations plan and compare resource impacts before committing.,Mission Planning,,avolkov,concept,
+,Publish the daily ops plan,Distribute the approved plan to all consoles and external partners.,Mission Planning,,bfoster,baselined,MP-PLAN-2
+,Track plan execution,Mark planned activities complete slipped or failed as the day unfolds.,Mission Planning,,bfoster,draft,MP-PLAN-4
+,Replan after an anomaly,Rebuild the remaining daily plan quickly when an anomaly consumes resources.,Mission Planning,,bfoster,draft,
+,Forecast resource contention,Project antenna and crew loading weeks ahead to spot bottlenecks.,Mission Planning,,bfoster,concept,MP-PLAN-11
+,Onboard a new satellite,Register a new spacecraft its database and its constraints into ground systems.,Fleet Management,,cdiaz,draft,FM-1
+,Decommission a satellite,Retire a spacecraft from operations and archive its full history.,Fleet Management,,cdiaz,concept,
+,Manage ground station inventory,Track antenna and equipment status maintenance windows and capabilities.,Fleet Management,,cdiaz,baselined,FM-4
+,Coordinate external ground time,Request and manage contact time purchased from partner networks.,Fleet Management,,cdiaz,draft,FM-6
+,Measure fleet utilization,Report on contact time payload duty cycle and capacity headroom per satellite.,Fleet Management,,nsmith,draft,FM-9
+,Support launch and early orbit,Run the intensive contact cadence and checkout sequence after launch.,Fleet Management,,nsmith,baselined,LEOP-1
+,Transfer satellite control,Hand a satellite to or from another operations organization with full records.,Fleet Management,,nsmith,concept,
+,File and track ops incidents,Report ground segment problems and track them to resolution.,Ops Support,,nsmith,draft,
