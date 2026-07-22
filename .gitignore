@@ -8,3 +8,4 @@ data/out/*
 !data/inbox/.gitkeep
 !data/archive/.gitkeep
 !data/out/.gitkeep
+data/use_cases_with_ids.csv
