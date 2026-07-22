@@ -1,0 +1,12 @@
+# Core requirements — the pipeline runs with just these.
+numpy
+pandas
+PyYAML
+
+# Recommended extras — resolve.py automatically uses them when present,
+# and falls back to built-in implementations when absent.
+#   choix        : Bradley-Terry / Plackett-Luce estimation (P3) + Bayesian posterior (P4)
+#   scipy        : rank-correlation diagnostics in the resolve report (Kendall tau)
+# Install with:  pip install choix scipy
+choix
+scipy

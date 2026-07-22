@@ -1,0 +1,61 @@
+id,name,description,category,supersedes,owner,status
+,Plan a mission timeline,Build an end-to-end mission timeline with tasks assigned to assets and crews.,Mission Planning,,Alice,draft
+,Generate candidate routes,Produce ranked route options between waypoints given terrain and threat overlays.,Mission Planning,,Alice,draft
+,Evaluate plan feasibility,Check a draft plan against asset availability and crew duty limits before approval.,Mission Planning,,Alice,draft
+,Rehearse a mission virtually,Step through a planned mission in simulation to spot conflicts before execution.,Mission Planning,,Bob,draft
+,Replan during execution,Modify an in-progress mission when conditions change and push updates to the field.,Mission Planning,,Bob,draft
+,Compare alternative plans,View two candidate plans side by side with cost and risk deltas.,Mission Planning,,Bob,draft
+,Approve a mission plan,Route a completed plan through the required approval chain with digital signoff.,Mission Planning,,Carol,draft
+,Archive completed missions,Preserve executed missions with their as-flown data for later analysis.,Mission Planning,,Carol,draft
+,Import external tasking,Ingest tasking orders from partner systems into the planning workspace.,Mission Planning,,Carol,draft
+,Deconflict shared airspace,Detect and resolve time and space conflicts across concurrent missions.,Mission Planning,,Dave,draft
+,Track asset location,Show live position and status of every asset on a common map.,Asset Management,,Dave,draft
+,Register a new asset,Add a new asset with its configuration and capabilities to the inventory.,Asset Management,,Dave,draft
+,Schedule preventive maintenance,Plan recurring maintenance windows that minimize impact on tasking.,Asset Management,,Erin,draft
+,Report an asset fault,Log a fault from the field with photos and severity for triage.,Asset Management,,Erin,draft
+,Forecast asset availability,Predict which assets will be mission-ready over the next 30 days.,Asset Management,,Erin,draft
+,Manage spare parts,Track spare part stock levels and reorder points across sites.,Asset Management,,Frank,draft
+,Transfer asset custody,Hand an asset off between units with a documented custody chain.,Asset Management,,Frank,draft
+,View asset utilization,See usage hours and tasking load per asset to balance wear.,Asset Management,,Frank,draft
+,Retire an asset,Remove an asset from service and archive its full history.,Asset Management,,Grace,draft
+,Audit asset configuration,Compare an asset's reported configuration against its approved baseline.,Asset Management,,Grace,draft
+,Search historical data,Query archived mission and sensor data by time area and keyword.,Data & Analysis,,Grace,draft
+,Build a trend dashboard,Assemble charts of key metrics that update as new data arrives.,Data & Analysis,,Heidi,draft
+,Export analysis products,Package analysis results into shareable briefing-ready formats.,Data & Analysis,,Heidi,draft
+,Fuse multi-source data,Correlate reports from multiple sensors into a single track picture.,Data & Analysis,,Heidi,draft
+,Annotate imagery,Mark up collected imagery with labels visible to other analysts.,Data & Analysis,,Ivan,draft
+,Generate activity reports,Produce scheduled summary reports of operations for leadership.,Data & Analysis,,Ivan,draft
+,Detect anomalies automatically,Flag unusual patterns in incoming data for analyst review.,Data & Analysis,,Ivan,draft
+,Replay past operations,Play back a recorded operation on the map with full timeline control.,Data & Analysis,,Judy,draft
+,Measure plan vs actual,Quantify how executed missions deviated from their plans.,Data & Analysis,,Judy,draft
+,Tag data for training sets,Curate labeled datasets from operational data for model training.,Data & Analysis,,Judy,draft
+,Send tasking to field units,Deliver approved tasking to field devices with receipt confirmation.,Communications,,Ken,draft
+,Chat with field teams,Exchange secure messages with deployed teams from the operations floor.,Communications,,Ken,draft
+,Broadcast alerts,Push priority alerts to all affected units simultaneously.,Communications,,Ken,draft
+,Share a common operating picture,Give partner organizations a filtered live view of operations.,Communications,,Laura,draft
+,Sync over low bandwidth,Keep field devices usable and synchronized on degraded links.,Communications,,Laura,draft
+,Operate disconnected,Continue local work during comms outages and reconcile on reconnect.,Communications,,Laura,draft
+,Translate message formats,Convert between partner message standards automatically.,Communications,,Mallory,draft
+,Manage distribution lists,Control which roles and units receive which message types.,Communications,,Mallory,draft
+,Acknowledge received orders,Track which recipients have seen and acknowledged each order.,Communications,,Mallory,draft
+,Escalate unanswered requests,Automatically escalate requests that miss response deadlines.,Communications,,Niaj,draft
+,Log in with unit credentials,Authenticate using organization-issued credentials and tokens.,Security & Access,,Niaj,draft
+,Manage user roles,Grant and revoke role-based permissions with an approval trail.,Security & Access,,Niaj,draft
+,Audit user activity,Review a tamper-evident log of who did what and when.,Security & Access,,Olivia,draft
+,Mark data classification,Label data with handling caveats that follow it everywhere.,Security & Access,,Olivia,draft
+,Enforce need-to-know views,Filter every screen to what the current user is cleared to see.,Security & Access,,Olivia,draft
+,Sanitize data for release,Strip sensitive fields from products before external sharing.,Security & Access,,Peggy,draft
+,Recover a locked account,Restore access for a locked-out user through a verified process.,Security & Access,,Peggy,draft
+,Rotate cryptographic keys,Update keys across the system without service interruption.,Security & Access,,Peggy,draft
+,Detect intrusion attempts,Alert security staff to suspicious access patterns in real time.,Security & Access,,Quentin,draft
+,Manage device enrollment,Approve and revoke field devices allowed to connect.,Security & Access,,Quentin,draft
+,Train a new operator,Guide a new operator through core workflows with practice scenarios.,Sustainment & Training,,Quentin,draft
+,Certify operator proficiency,Record completion of required proficiency checks per role.,Sustainment & Training,,Rita,draft
+,Practice in a sandbox,Provide a safe environment with realistic data for experimentation.,Sustainment & Training,,Rita,draft
+,Update system software,Roll out software updates to servers and field devices in stages.,Sustainment & Training,,Rita,draft
+,Monitor system health,Watch service status and resource use with alerting thresholds.,Sustainment & Training,,Sybil,draft
+,Back up and restore,Run scheduled backups and verified restores of critical data.,Sustainment & Training,,Sybil,draft
+,Manage reference data,Maintain shared lookup tables like unit codes and asset types.,Sustainment & Training,,Sybil,draft
+,File a support ticket,Report a system problem and track it to resolution.,Sustainment & Training,,Trent,draft
+,Measure system usage,Report which features are used how often by which roles.,Sustainment & Training,,Trent,draft
+,Onboard a partner organization,Set up a new partner with accounts policies and data shares.,Sustainment & Training,,Trent,draft

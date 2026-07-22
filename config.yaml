@@ -1,0 +1,59 @@
+# ============================================================
+# Use-Case Prioritization Survey — configuration
+# Edit this file, then re-run:  python build_survey.py
+# ============================================================
+
+survey:
+  title: "Use Case Prioritization Survey"
+  # Shown on the intro screen. Keep the "stop anytime" promise — the tool
+  # really does keep every answered screen, even from aborted sessions.
+  intro: >
+    Help us prioritize the system's use cases. On each screen you'll see
+    four use cases — tap the one that is MOST important to you and the one
+    that is LEAST important. Tap a name to read its full description.
+    You can stop at any time: every screen you complete counts.
+
+  # Dropdown choices offered to the respondent. Edit freely.
+  roles:
+    - Operator
+    - Maintainer
+    - Systems Engineer
+    - Software Engineer
+    - Program Office
+    - Leadership
+    - Other
+  organizations:
+    - Organization A
+    - Organization B
+    - Organization C
+    - Other
+
+  # Time-budget arms. exposure = how many times each use case is shown to
+  # one respondent. The short arm gives pooled (group-level) data only;
+  # the long arm's 3x exposure also supports per-person scores.
+  arms:
+    short:
+      label: "About 10 minutes"
+      exposure: 1
+    long:
+      label: "About 30–60 minutes (best data)"
+      exposure: 3
+  # After finishing their arm, respondents may keep going in extra blocks
+  # (each block shows every item once more) up to this total exposure:
+  max_exposure: 5
+
+  items_per_screen: 4        # research optimum for 50-70 items; do not raise above 5
+  screens_per_block: 12      # break screen offered after each block
+  seconds_per_screen: 22     # only used to show time estimates to respondents
+
+build:
+  seed: "ucsurvey-v1"        # change to regenerate different (still balanced) designs
+  hill_climb_iterations: 5000
+  category_mix_weight: 0.5   # >0 discourages same-category pairs on one screen
+
+resolve:
+  bootstrap_samples: 2000    # P5 confidence intervals; lower to ~200 for quick looks
+  bootstrap_seed: 20260722
+  bt_alpha: 0.05             # Bradley-Terry regularization (keeps sparse data solvable)
+  top_n: 10                  # "P(top-10)" column refers to this N
+  lineage: strict            # strict = current items only | inherit = predecessor votes count
