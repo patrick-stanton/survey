@@ -82,7 +82,9 @@ def simulate_respondent(
 
 
 def write_inbox(files: list[dict], inbox: Path) -> None:
+    """Write each simulated result as the CSV a respondent would send back."""
+    from ucsurvey import csv_result
     inbox.mkdir(parents=True, exist_ok=True)
     for data in files:
-        name = f"{data['respondent']['email'].replace('@', '-at-')}_{data['sessionId']}.json"
-        (inbox / name).write_text(json.dumps(data, indent=1))
+        name = f"{data['respondent']['email'].replace('@', '-at-')}_{data['sessionId']}.csv"
+        (inbox / name).write_text(csv_result.build_csv(data))

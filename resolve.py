@@ -25,9 +25,10 @@ import yaml
 
 from ucsurvey import archive as arc
 from ucsurvey import catalog as cat
+from ucsurvey import lineage as lin
 from ucsurvey.explode import exploded_pairs, sets_per_respondent
 from ucsurvey.profiles import p1_counts, p2_copeland, p3_bradley_terry, p4_bayes_bt, p5_bootstrap
-from ucsurvey.report import write_enriched_csv, write_report
+from ucsurvey.report import write_enriched_csv, write_report, write_cameo_import
 
 HERE = Path(__file__).parent
 
@@ -44,6 +45,9 @@ def main(argv=None) -> int:
     ap.add_argument("--as-of", default=None, metavar="YYYY-MM-DD",
                     help="date to stamp in outputs (default: today). Set this to "
                     "make the whole run byte-for-byte reproducible.")
+    ap.add_argument("--drop-unmapped", action="store_true",
+                    help="proceed even if some historical use cases are unmapped "
+                    "(their votes are dropped). Default is to refuse — run reconcile.py.")
     args = ap.parse_args(argv)
 
     with open(args.config, encoding="utf-8") as fh:
@@ -53,29 +57,44 @@ def main(argv=None) -> int:
     n_boot = 200 if args.fast else int(rcfg.get("bootstrap_samples", 2000))
     seed = int(rcfg.get("bootstrap_seed", 20260722))
     top_n = int(rcfg.get("top_n", 10))
-    lineage = args.lineage or str(rcfg.get("lineage", "strict"))
+    lineage = args.lineage or str(rcfg.get("lineage", "inherit"))
 
     df = cat.load_catalog(args.csv)
     item_ids = list(df["id"])
-    mapping = cat.lineage_map(df)
+    current_ids = set(item_ids)
+    data_dir = args.csv.parent
+    raw_map = lin.raw_map(df, lin.default_path(data_dir))
 
     raw = arc.load_archive(args.archive)
     if raw.empty:
         print("Archive is empty — run ingest.py first.")
         return 1
-    long_df = arc.apply_lineage(raw, mapping, set(item_ids), lineage)
-    dropped = raw.shape[0] - long_df.shape[0]
-    if dropped:
-        print(f"Lineage mode '{lineage}': {dropped} answer rows referenced items "
-              f"outside the current catalog and were "
-              f"{'re-mapped where possible, rest ' if lineage == 'inherit' else ''}dropped.")
-    if long_df.empty or dropped > raw.shape[0] * 0.5:
-        print("\nERROR: most or all archived answers no longer match the catalog's ids."
-              "\nAlmost always this means the use-case CSV lost its id column (ids were"
-              "\nre-minted and shifted). Restore the ids the archive was collected"
-              "\nagainst — see data/use_cases_with_ids.csv from the original build, or"
-              "\nthe 'shown' ids inside any data/archive/*.json file.")
+
+    # Refuse to run if history references use cases we don't know how to handle,
+    # so real votes are never silently dropped.
+    hist = lin.historical_ids(raw)
+    orphans = lin.unmapped_orphans(hist, current_ids, raw_map)
+    if orphans and not args.drop_unmapped:
+        counts = raw[raw["item_id"].isin(orphans)].groupby("item_id")["email"].nunique()
+        print("\nSTOP: these historical use cases are no longer in the catalog and "
+              "you haven't told the tool how to handle them:")
+        for oid in orphans:
+            print(f"  {oid}  ({int(counts.get(oid, 0))} respondents' votes at stake)")
+        print("\nRun:  python reconcile.py     (map each one: renamed / split / "
+              "merged / dropped / revived)\nor add --drop-unmapped to drop their "
+              "votes and proceed anyway.")
         return 1
+
+    dangling = lin.dangling_targets(raw_map, current_ids)
+    if dangling:
+        print(f"WARNING: lineage for {dangling} points to use cases that don't "
+              "exist in the current catalog — those votes will be dropped.")
+
+    mapping = lin.closure(raw_map, current_ids)
+    long_df = arc.apply_lineage(raw, mapping, current_ids, lineage)
+
+    for w in lin.name_drift_warnings(long_df, df, data_dir):
+        print(f"DRIFT? {w}")
 
     pairs = exploded_pairs(long_df)
     spr = sets_per_respondent(long_df)
@@ -120,8 +139,11 @@ def main(argv=None) -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     csv_path = write_enriched_csv(df, long_df, results, args.out / "use_cases_enriched.csv")
     rpt_path = write_report(df, long_df, results, args.out / "resolve_report.txt")
-    print(f"Wrote {csv_path}\nWrote {rpt_path}")
-    print("Import the CSV into Cameo via the generic table's 'Read From File' (README).")
+    cameo_path = write_cameo_import(df, long_df, results, args.out / "cameo_import.csv")
+    print(f"Wrote {csv_path}")
+    print(f"Wrote {rpt_path}")
+    print(f"Wrote {cameo_path}  <- import THIS into Cameo (surveyId + rank only)")
+    print("The enriched CSV and the report keep the full detail for analysis.")
     return 0
 
 

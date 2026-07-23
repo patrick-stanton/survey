@@ -100,6 +100,11 @@ def main(argv=None) -> int:
         return 1
     df = cat.load_catalog(args.csv)
 
+    # Save an immutable snapshot of this catalog version so future
+    # reconciliation can look up what any retired id used to be.
+    from ucsurvey import versions
+    versions.save_snapshot(df, args.csv.parent, cat.catalog_hash(df))
+
     if df.attrs["minted"]:
         with_ids = args.csv.with_name(args.csv.stem + "_with_ids.csv")
         cat.write_catalog_with_ids(df, with_ids)

@@ -260,22 +260,81 @@ function deriveRespondentSets(master, itemIds, seedStr) {
 }
 //<RNG-PARITY-END>
 
-//<COMPACT-PARITY-START>  (mirrored by ucsurvey/compact.py; tests enforce parity)
-function b64url(binaryStr) {
-  return btoa(binaryStr).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+//<SHA256-PARITY-START>  (matches Python hashlib.sha256; works on file:// where
+//                        crypto.subtle is unavailable. Standard implementation.)
+function sha256Hex(ascii) {
+  function rotr(n, x) { return (x >>> n) | (x << (32 - n)); }
+  var mathPow = Math.pow, maxWord = mathPow(2, 32), result = "";
+  var words = [], asciiBitLength = ascii.length * 8;
+  var hash = sha256Hex.h = sha256Hex.h || [];
+  var k = sha256Hex.k = sha256Hex.k || [];
+  var primeCounter = k.length, isComposite = {};
+  for (var candidate = 2; primeCounter < 64; candidate++) {
+    if (!isComposite[candidate]) {
+      for (var i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+      hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+      k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+    }
+  }
+  ascii += "\x80";
+  while (ascii.length % 64 - 56) ascii += "\x00";
+  for (i = 0; i < ascii.length; i++) {
+    var j = ascii.charCodeAt(i);
+    if (j >> 8) return "";
+    words[i >> 2] |= j << ((3 - i) % 4) * 8;
+  }
+  words[words.length] = (asciiBitLength / maxWord) | 0;
+  words[words.length] = asciiBitLength;
+  for (j = 0; j < words.length;) {
+    var w = words.slice(j, j += 16), oldHash = hash;
+    hash = hash.slice(0, 8);
+    for (i = 0; i < 64; i++) {
+      var w15 = w[i - 15], w2 = w[i - 2];
+      var a = hash[0], e = hash[4];
+      var temp1 = hash[7] + (rotr(6, e) ^ rotr(11, e) ^ rotr(25, e)) +
+        ((e & hash[5]) ^ (~e & hash[6])) + k[i] +
+        (w[i] = i < 16 ? w[i] : (w[i - 16] +
+          (rotr(7, w15) ^ rotr(18, w15) ^ (w15 >>> 3)) + w[i - 7] +
+          (rotr(17, w2) ^ rotr(19, w2) ^ (w2 >>> 10))) | 0);
+      var temp2 = (rotr(2, a) ^ rotr(13, a) ^ rotr(22, a)) +
+        ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+      hash = [(temp1 + temp2) | 0].concat(hash);
+      hash[4] = (hash[4] + temp1) | 0;
+    }
+    for (i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+  }
+  for (i = 0; i < 8; i++)
+    for (j = 3; j + 1; j--) {
+      var b = (hash[i] >> (j * 8)) & 255;
+      result += ((b < 16) ? 0 : "") + b.toString(16);
+    }
+  return result;
 }
-function encodeCompactCode(header, picks) {
-  // picks: [{skipped, bestPos, worstPos, ms}] with positions in shown order
-  var hjson = JSON.stringify(header);
-  var hb64 = b64url(unescape(encodeURIComponent(hjson)));  // UTF-8 safe
-  var bytes = "";
-  picks.forEach(function (p) {
-    bytes += String.fromCharCode(p.skipped ? 255 : p.bestPos * 4 + p.worstPos);
-    bytes += String.fromCharCode(Math.min(254, Math.round((p.ms || 0) / 100)));
+function sha256Utf8(str) { return sha256Hex(unescape(encodeURIComponent(str))); }
+//<SHA256-PARITY-END>
+
+//<CSV-PARITY-START>  (mirrored by ucsurvey/csv_result.py; tests enforce parity)
+function csvCell(value) {
+  var t = String(value);
+  return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+}
+function buildResultCsv(header, picks) {
+  // header: {e,n,r,o,f,a,s,x,h,t,d}; picks: [{shown[], best, worst, skipped, ms}]
+  var order = ["e", "n", "r", "o", "f", "a", "s", "x", "h", "t", "d"];
+  var keys = {e: "email", n: "name", r: "role", o: "organization", f: "familiarity",
+    a: "arm", s: "session_id", x: "extra_blocks", h: "catalog_version",
+    t: "started_at", d: "exported_at"};
+  var lines = ["ucsurvey_csv,1"];
+  order.forEach(function (kk) { lines.push(keys[kk] + "," + csvCell(header[kk])); });
+  lines.push("screen,shown,most_important,least_important,skipped,seconds");
+  picks.forEach(function (p, i) {
+    lines.push([i, p.shown.join("|"), p.skipped ? "" : p.best,
+      p.skipped ? "" : p.worst, p.skipped ? "true" : "false",
+      ((p.ms || 0) / 1000).toFixed(1)].join(","));
   });
-  return "UCS1." + hb64 + "." + b64url(bytes);
+  return lines.join("\n") + "\n" + "checksum," + sha256Utf8(lines.join("\n")) + "\n";
 }
-//<COMPACT-PARITY-END>
+//<CSV-PARITY-END>
 
 var DATA = JSON.parse(document.getElementById("survey-data").textContent);
 var ITEMS = {};
@@ -610,52 +669,25 @@ function finish(early) {
 }
 function resultFilename() {
   var slug = state.respondent.email.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "");
-  return "usecase-survey_" + slug + "_" + state.sessionId + ".json";
+  return "usecase-survey_" + slug + "_" + state.sessionId + ".csv";
 }
-function buildCompactCode() {
+function buildResultCsvText() {
   var r = state.respondent;
   var header = {
-    v: 1, s: state.sessionId, e: r.email, n: r.name, r: r.role,
-    o: r.organization, f: r.familiarity, a: state.arm, x: state.extraBlocks,
-    h: state.catalogVersionHash, g: DATA.designHash,
-    t: state.startedAt, d: new Date().toISOString()
+    e: r.email, n: r.name, r: r.role, o: r.organization, f: r.familiarity,
+    a: state.arm, s: state.sessionId, x: state.extraBlocks,
+    h: state.catalogVersionHash, t: state.startedAt, d: new Date().toISOString()
   };
   var picks = state.sets.map(function (s) {
-    return {
-      skipped: s.skipped,
-      bestPos: s.skipped ? 0 : s.shown.indexOf(s.best),
-      worstPos: s.skipped ? 0 : s.shown.indexOf(s.worst),
-      ms: s.responseMs
-    };
+    return { shown: s.shown, best: s.best, worst: s.worst,
+             skipped: s.skipped, ms: s.responseMs };
   });
-  return encodeCompactCode(header, picks);
-}
-function doEmail() {
-  var code = buildCompactCode();
-  var body = "Hello,\n\nMy use case survey results are in the code below — " +
-    "nothing else needed, just press Send.\n\n" + code + "\n\n" +
-    state.respondent.name + " (" +
-    state.sets.filter(function (s) { return !s.skipped; }).length + " screens)\n";
-  var url = "mailto:" + DATA.returnEmail +
-    "?subject=" + encodeURIComponent(DATA.returnSubject + " - " + state.respondent.name) +
-    "&body=" + encodeURIComponent(body);
-  if (url.length > 1900) {
-    // Very long session + long name can exceed conservative mailto limits:
-    // fall back to attach-the-download instructions.
-    doDownload();
-    url = "mailto:" + DATA.returnEmail +
-      "?subject=" + encodeURIComponent(DATA.returnSubject + " - " + state.respondent.name) +
-      "&body=" + encodeURIComponent(
-        "Hello,\n\nMy survey results file just downloaded (check Downloads for " +
-        resultFilename() + ") - please find it attached.\n\n" + state.respondent.name + "\n");
-  }
-  document.getElementById("downloadOk").style.display = "block";
-  window.location.href = url;
+  return buildResultCsv(header, picks);
 }
 function doDownload() {
-  var json = JSON.stringify(buildResult(), null, 1);
+  var csvText = buildResultCsvText();
   try {
-    var blob = new Blob([json], { type: "application/json" });
+    var blob = new Blob([csvText], { type: "text/csv" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = resultFilename();
@@ -665,17 +697,40 @@ function doDownload() {
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
     document.getElementById("downloadOk").style.display = "block";
   } catch (e) {
-    showCopyArea(json, "Automatic download failed — copy the text below and email it to us.");
+    showCopyArea(csvText, "Automatic download failed — copy the text below and email it to us.");
   }
 }
-function showCopyArea(json, msg) {
+function doEmail() {
+  // A pre-addressed draft. The full CSV is legible in the body (reliable path),
+  // and we also trigger the file download so the respondent can attach it.
+  var csvText = buildResultCsvText();
+  doDownload();
+  var body = "Hello,\n\nMy use case survey results are below (and the file " +
+    resultFilename() + " just downloaded — you can attach it too).\n\n" +
+    "----- results -----\n" + csvText + "----- end -----\n\n" +
+    state.respondent.name + "\n";
+  var url = "mailto:" + DATA.returnEmail +
+    "?subject=" + encodeURIComponent(DATA.returnSubject + " - " + state.respondent.name) +
+    "&body=" + encodeURIComponent(body);
+  if (url.length > 6000) {
+    // Long session exceeds conservative mailto limits — fall back to attach-only.
+    url = "mailto:" + DATA.returnEmail +
+      "?subject=" + encodeURIComponent(DATA.returnSubject + " - " + state.respondent.name) +
+      "&body=" + encodeURIComponent(
+        "Hello,\n\nMy survey results file just downloaded (" + resultFilename() +
+        ") — please find it attached.\n\n" + state.respondent.name + "\n");
+  }
+  document.getElementById("downloadOk").style.display = "block";
+  window.location.href = url;
+}
+function showCopyArea(text, msg) {
   var ta = document.getElementById("copyArea");
-  ta.value = json; ta.style.display = "block";
+  ta.value = text; ta.style.display = "block";
   ta.focus(); ta.select();
   if (msg) alert(msg);
 }
 function doCopy() {
-  var text = buildCompactCode();
+  var text = buildResultCsvText();
   function fallback() {
     var ta = document.getElementById("copyArea");
     ta.value = text; ta.style.display = "block"; ta.focus(); ta.select();

@@ -61,7 +61,7 @@ resolve:
   bootstrap_seed: 20260722
   bt_alpha: 0.05             # Bradley-Terry regularization (keeps sparse data solvable)
   top_n: 10                  # "P(top-10)" column refers to this N
-  lineage: strict            # strict = current items only | inherit = predecessor votes count
+  lineage: inherit           # inherit = split/merged predecessors' votes carry over | strict = current items only
 
 # Optional: pull_email.py reads results out of your mailbox automatically.
 # Works with any IMAP-enabled account (password is prompted, never stored).

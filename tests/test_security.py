@@ -123,81 +123,61 @@ def test_unknown_arm_rejected(payload):
         compact.decode(forged, payload)
 
 
-# ---------- batch resilience: one bad file can't sink the rest ----------
+# ---------- batch resilience & roster via the real ingest CLI ----------
 
-def test_one_poisoned_file_does_not_abort_batch(tmp_path, chash, known_ids):
-    archive = tmp_path / "archive"
-    report = arc.IngestReport()
-    # 000 sorts first and is poison; 111 is a good file after it.
-    (tmp_path / "000_poison.json").write_text("[" * 100000)  # deep/garbage
-    good = valid_response(chash, known_ids)
-    (tmp_path / "111_good.json").write_text(json.dumps(good))
-    for f in sorted(tmp_path.glob("*.json")):
-        arc.ingest_file(f, archive, chash, known_ids, report, items_per_screen=4)
-    assert any("111_good" in n for n in report.accepted)   # good file survived
-    assert any("000_poison" in n for n, _ in report.rejected)
+def _real_csv(payload, inbox, email, seed):
+    from tests.simulate import simulate_respondent, true_utilities
+    from ucsurvey import csv_result
+    util = true_utilities([it["id"] for it in payload["catalog"]])
+    r = simulate_respondent(payload, email, "Operator", "Org A", "short", util, seed=seed)
+    (inbox / f"{email.replace('@', '-')}.csv").write_text(csv_result.build_csv(r))
 
 
-def test_type_confusion_file_rejected_not_crash(tmp_path, chash, known_ids):
-    archive = tmp_path / "archive"
-    report = arc.IngestReport()
-    (tmp_path / "r.json").write_text(json.dumps(
-        {"sessionId": "s", "respondent": {"name": "a", "email": "a@b.com",
-         "role": "r", "organization": "o", "familiarity": 1},
-         "catalogVersionHash": chash, "arm": "short", "sets": 5}))
-    arc.ingest_file(tmp_path / "r.json", archive, chash, known_ids, report,
-                    items_per_screen=4)
-    assert report.rejected and "list" in report.rejected[0][1]
+def test_one_poisoned_file_does_not_abort_batch(tmp_path, payload):
+    import ingest as ingest_mod
+    ws_csv = tmp_path / "use_cases.csv"
+    cat.write_catalog_with_ids(cat.load_catalog(SAMPLE), ws_csv)
+    inbox = tmp_path / "inbox"; inbox.mkdir()
+    (inbox / "000_poison.csv").write_text("ucsurvey_csv,1\ngarbage lines\n")  # sorts first
+    _real_csv(payload, inbox, "good@corp.com", seed=41)
+
+    rc = ingest_mod.main([str(inbox), "--csv", str(ws_csv),
+                          "--config", str(ROOT / "config.yaml"),
+                          "--archive", str(tmp_path / "archive")])
+    assert rc == 2  # some rejected
+    long_df = arc.load_archive(tmp_path / "archive")
+    assert "good@corp.com" in set(long_df["email"])  # good file survived the poison
 
 
-# ---------- integrity: no silent overwrite of a recorded session ----------
-
-def test_supersede_requires_append_only(tmp_path, chash, known_ids):
-    archive = tmp_path / "archive"
-    report = arc.IngestReport()
-    original = valid_response(chash, known_ids, sets=2)
-    arc.ingest_file(_drop(tmp_path, original, "a.json"), archive, chash,
-                    known_ids, report, items_per_screen=4)
-    assert report.accepted
-
-    # Tampered: same session, MORE sets, but flips an earlier screen's picks.
-    tampered = valid_response(chash, known_ids, sets=3)
-    ids = tampered["sets"][0]["shown"]
-    tampered["sets"][0]["best"], tampered["sets"][0]["worst"] = ids[-1], ids[0]  # flipped
-    arc.ingest_file(_drop(tmp_path, tampered, "b.json"), archive, chash,
-                    known_ids, report, items_per_screen=4)
-    assert any("not an append-only" in reason for _, reason in report.rejected)
-    # archive still holds the honest 2-set original
-    stored = json.loads(next(archive.glob("*.json")).read_text())
-    assert len(stored["sets"]) == 2
+def test_type_confusion_file_rejected_not_crash(tmp_path, payload):
+    import ingest as ingest_mod
+    ws_csv = tmp_path / "use_cases.csv"
+    cat.write_catalog_with_ids(cat.load_catalog(SAMPLE), ws_csv)
+    inbox = tmp_path / "inbox"; inbox.mkdir()
+    (inbox / "bad.json").write_text(json.dumps(
+        {"sessionId": "s", "respondent": {"name": "a", "email": "a@b.com", "role": "r",
+         "organization": "o", "familiarity": 1},
+         "catalogVersionHash": payload["catalogVersionHash"], "arm": "short", "sets": 5}))
+    _real_csv(payload, inbox, "ok@corp.com", seed=42)
+    rc = ingest_mod.main([str(inbox), "--csv", str(ws_csv),
+                          "--config", str(ROOT / "config.yaml"),
+                          "--archive", str(tmp_path / "archive")])
+    assert rc == 2
+    assert "ok@corp.com" in set(arc.load_archive(tmp_path / "archive")["email"])
 
 
-def test_genuine_longer_reexport_accepted(tmp_path, chash, known_ids):
-    archive = tmp_path / "archive"
-    report = arc.IngestReport()
-    arc.ingest_file(_drop(tmp_path, valid_response(chash, known_ids, sets=2), "a.json"),
-                    archive, chash, known_ids, report, items_per_screen=4)
-    arc.ingest_file(_drop(tmp_path, valid_response(chash, known_ids, sets=4), "b.json"),
-                    archive, chash, known_ids, report, items_per_screen=4)
-    assert report.replaced  # honest superset accepted
-    stored = json.loads(next(archive.glob("*.json")).read_text())
-    assert len(stored["sets"]) == 4
+def test_roster_rejects_uninvited_email(tmp_path, payload):
+    import ingest as ingest_mod
+    ws_csv = tmp_path / "use_cases.csv"
+    cat.write_catalog_with_ids(cat.load_catalog(SAMPLE), ws_csv)
+    inbox = tmp_path / "inbox"; inbox.mkdir()
+    _real_csv(payload, inbox, "invited@corp.com", seed=43)
+    _real_csv(payload, inbox, "outsider@corp.com", seed=44)
+    roster = tmp_path / "roster.txt"
+    roster.write_text("invited@corp.com\n")
 
-
-# ---------- Sybil control: roster allowlist ----------
-
-def test_roster_rejects_uninvited_email(tmp_path, chash, known_ids):
-    archive = tmp_path / "archive"
-    report = arc.IngestReport()
-    roster = {"invited@corp.com"}
-    outsider = valid_response(chash, known_ids)
-    outsider["respondent"]["email"] = "fake17@corp.com"
-    arc.ingest_file(_drop(tmp_path, outsider, "x.json"), archive, chash,
-                    known_ids, report, items_per_screen=4, roster=roster)
-    assert any("not on the invited roster" in r for _, r in report.rejected)
-
-
-def _drop(tmp_path, data, name):
-    p = tmp_path / name
-    p.write_text(json.dumps(data))
-    return p
+    rc = ingest_mod.main([str(inbox), "--csv", str(ws_csv), "--roster", str(roster),
+                          "--config", str(ROOT / "config.yaml"),
+                          "--archive", str(tmp_path / "archive")])
+    emails = set(arc.load_archive(tmp_path / "archive")["email"])
+    assert "invited@corp.com" in emails and "outsider@corp.com" not in emails

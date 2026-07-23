@@ -64,38 +64,6 @@ def test_skip_and_long_session_roundtrip(payload):
     assert [s["best"] for s in decoded["sets"]] == [s["best"] for s in r["sets"]]
 
 
-def test_js_parity(payload, result):
-    node = shutil.which("node")
-    if node is None:
-        pytest.skip("node not installed")
-    html = (ROOT / "template" / "survey_template.html").read_text()
-    js = re.search(r"//<COMPACT-PARITY-START>[^\n]*\n(.*?)//<COMPACT-PARITY-END>",
-                   html, re.S).group(1)
-
-    r = result["respondent"]
-    header = {"v": 1, "s": result["sessionId"], "e": r["email"], "n": r["name"],
-              "r": r["role"], "o": r["organization"], "f": r["familiarity"],
-              "a": result["arm"], "x": result["extraBlocks"],
-              "h": result["catalogVersionHash"], "g": compact.design_hash(payload),
-              "t": result["startedAt"], "d": result["exportedAt"]}
-    picks = [{"skipped": s["skipped"],
-              "bestPos": s["shown"].index(s["best"]) if not s["skipped"] else 0,
-              "worstPos": s["shown"].index(s["worst"]) if not s["skipped"] else 0,
-              "ms": s["responseMs"]} for s in result["sets"]]
-    out = subprocess.run(
-        [node, "-e", js + f"""
-         var header = {json.dumps(header)};
-         var picks = {json.dumps(picks)};
-         console.log(encodeCompactCode(header, picks));"""],
-        capture_output=True, text=True, check=True, timeout=60)
-    js_code = out.stdout.strip()
-
-    decoded = compact.decode(js_code, payload)
-    for orig, dec in zip(result["sets"], decoded["sets"]):
-        assert dec["shown"] == orig["shown"]
-        assert dec["best"] == orig["best"] and dec["worst"] == orig["worst"]
-
-
 def test_wrong_build_is_refused(payload, result):
     code = compact.encode(result, payload)
     tampered = dict(payload, continuationMaster=payload["continuationMaster"][::-1])

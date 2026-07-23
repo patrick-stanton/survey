@@ -54,7 +54,7 @@ def test_lineage_map_and_conflicts(tmp_path):
         "id,name,supersedes\nUC-010,Merged,UC-001;UC-002\nUC-011,Kept,\n",
     )
     df = catalog.load_catalog(p)
-    assert catalog.lineage_map(df) == {"UC-001": "UC-010", "UC-002": "UC-010"}
+    assert catalog.lineage_map(df) == {"UC-001": ["UC-010"], "UC-002": ["UC-010"]}
 
     bad = make_csv(tmp_path, "id,name,supersedes\nUC-010,A,UC-011\nUC-011,B,\n")
     with pytest.raises(catalog.CatalogError, match="still\\s+exists"):

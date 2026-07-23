@@ -81,6 +81,26 @@ def write_enriched_csv(df: pd.DataFrame, long_df: pd.DataFrame, results: dict,
     return out_path
 
 
+def write_cameo_import(df: pd.DataFrame, long_df: pd.DataFrame, results: dict,
+                       out_path: Path) -> Path:
+    """The minimal file to import into Cameo: surveyId + rank only.
+
+    The ranking is the decision; the full detail (scores, intervals,
+    disagreement) lives in the enriched CSV and the web report so the model
+    stays uncluttered. One row per catalog item, always.
+    """
+    item_ids = list(df["id"])
+    p1_rank = p1_counts.ranks(results["p1_scores"]).reindex(item_ids)
+    exposure = _exposure_stats(long_df, item_ids)
+    out = pd.DataFrame({
+        "surveyId": item_ids,
+        "rank": p1_rank.to_numpy().astype(int),
+        "n_respondents": exposure["n_respondents"].to_numpy(),
+    })
+    out.to_csv(out_path, index=False)
+    return out_path
+
+
 def write_report(df: pd.DataFrame, long_df: pd.DataFrame, results: dict,
                  out_path: Path) -> Path:
     item_ids = list(df["id"])

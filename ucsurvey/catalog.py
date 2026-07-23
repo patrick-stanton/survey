@@ -112,9 +112,14 @@ def parse_supersedes(cell: str) -> list[str]:
     return [p.strip() for p in str(cell).split(";") if p.strip()]
 
 
-def lineage_map(df: pd.DataFrame) -> dict[str, str]:
-    """{predecessor id -> current successor id} from the supersedes column."""
-    mapping: dict[str, str] = {}
+def lineage_map(df: pd.DataFrame) -> dict[str, list[str]]:
+    """{predecessor id -> [successor id, ...]} from the supersedes column.
+
+    One successor is a merge or rename; MULTIPLE successors is a split (one old
+    use case became several new ones, each inheriting the old one's votes). A
+    successor may itself list several predecessors (a merge). Both compose.
+    """
+    mapping: dict[str, list[str]] = {}
     current = set(df["id"])
     for _, row in df.iterrows():
         for old in parse_supersedes(row["supersedes"]):
@@ -123,11 +128,9 @@ def lineage_map(df: pd.DataFrame) -> dict[str, str]:
                     f"'{row['id']}' claims to supersede '{old}', which still "
                     "exists in the catalog. Remove one or the other."
                 )
-            if old in mapping and mapping[old] != row["id"]:
-                raise CatalogError(
-                    f"'{old}' is superseded by both '{mapping[old]}' and '{row['id']}'."
-                )
-            mapping[old] = row["id"]
+            mapping.setdefault(old, [])
+            if row["id"] not in mapping[old]:
+                mapping[old].append(row["id"])
     return mapping
 
 

@@ -2,17 +2,28 @@ __pycache__/
 *.pyc
 .pytest_cache/
 dist/
-data/inbox/*
-data/archive/*
+
+# Collected data and outputs (respondent PII + generated files) — never committed.
+data/survey_inbox/*
+!data/survey_inbox/.gitkeep
+data/archive/
+!data/archive/active/.gitkeep
 data/out/*
-!data/inbox/.gitkeep
-!data/archive/.gitkeep
 !data/out/.gitkeep
-data/*_with_ids.csv
+data/inbox/*
+!data/inbox/.gitkeep
 data/decoded_codes/
 data/.pulled_messages.json
 data/roster.txt
+data/*_with_ids.csv
+
+# Catalog version snapshots are regenerated at build time.
+data/catalog_versions/
+
 # Your real catalog (may hold internal names/emails in passthrough columns) is
 # gitignored so it can't be accidentally committed. The tracked example is
 # data/use_cases.sample.csv — copy it to data/use_cases.csv to start.
 data/use_cases.csv
+
+# lineage.csv holds only id->id mappings (no PII) and SHOULD be committed so
+# reconciliation decisions are shared and audited — so it is intentionally NOT ignored.

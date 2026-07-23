@@ -71,7 +71,7 @@ def main() -> int:
     orgs = ["Organization A", "Organization B"]
     print(f"\n[simulating 16 respondents answering the {len(df)}-use-case survey…]")
 
-    json_people, code_people = [], []
+    file_people, email_people = [], []
     for i in range(16):
         person = simulate_respondent(
             payload, f"person{i:02d}@example.com", roles[i % 3], orgs[i % 2],
@@ -79,18 +79,19 @@ def main() -> int:
             abort_after=5 if i % 6 == 0 else None,          # some quit early
             random_clicker=(i == 15),                        # one careless clicker
         )
-        (json_people if i % 2 == 0 else code_people).append(person)
+        (file_people if i % 2 == 0 else email_people).append(person)
 
-    # 3a. Half return the downloaded .json file…
-    write_inbox(json_people, inbox)
-    # 3b. …half click "Email my results" — a UCS1 code in an email body.
-    for person in code_people:
-        code = compact.encode(person, payload)
+    # 3a. Half return the downloaded CSV file…
+    write_inbox(file_people, inbox)
+    # 3b. …half paste the CSV into an email body (saved as .txt).
+    from ucsurvey import csv_result
+    for person in email_people:
+        body = csv_result.build_csv(person)
         (inbox / f"email_{person['sessionId']}.txt").write_text(
             f"From: {person['respondent']['email']}\nSubject: Use case survey results\n"
-            f"\nHere are my results:\n\n{code}\n", encoding="utf-8")
-    print(f"[wrote {len(json_people)} .json downloads and {len(code_people)} "
-          f"emailed codes into the inbox]")
+            f"\nHere are my results:\n\n{body}\n", encoding="utf-8")
+    print(f"[wrote {len(file_people)} CSV downloads and {len(email_people)} "
+          f"emailed CSVs into the inbox]")
 
     # 4. Ingest everything (both formats, one command).
     run("ingest.py", inbox, "--csv", csv, "--archive", archive,
