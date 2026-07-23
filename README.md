@@ -191,6 +191,14 @@ tests/                 unit + end-to-end simulation suite (pytest)
 
 ## Verifying the pipeline
 
+See the whole loop in one command (simulated data, ~30 s):
+
+```bash
+python demo.py
+```
+
+Run the test suite (61 tests, incl. 19 adversarial security tests):
+
 ```bash
 pip install pytest && python -m pytest tests/
 ```
@@ -200,3 +208,6 @@ order — including people who quit early and one random clicker — pushes thei
 files through the real scripts, and asserts the truth is recovered and the
 clicker flagged. Browser tests (optional, need `playwright`) drive the real
 survey in headless Chromium, including abort-and-resume and the download.
+
+Full hands-on and edge-case checklist: [MANUAL_TESTS.md](MANUAL_TESTS.md).
+Security posture and threat model: [SECURITY.md](SECURITY.md).
