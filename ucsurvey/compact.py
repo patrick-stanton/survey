@@ -95,6 +95,8 @@ def decode(code: str, payload: dict) -> dict:
         raise CodeError(f"corrupted code: {exc}") from exc
     if header.get("v") != 1:
         raise CodeError(f"unsupported code version {header.get('v')}")
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", str(header.get("s", ""))):
+        raise CodeError("sessionId contains characters the survey never produces")
     if header["h"] != payload["catalogVersionHash"]:
         raise CodeError(
             f"code was produced by catalog {header['h']}, current is "

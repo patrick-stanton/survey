@@ -34,7 +34,12 @@ class IngestReport:
 
 def validate_response(data: dict, catalog_hash: str, known_ids: set[str],
                       allow_hashes: set[str] = frozenset()) -> None:
-    """Raise ResponseError if this response file can't be trusted."""
+    """Raise ResponseError if this response file can't be trusted.
+
+    Response files are UNTRUSTED INPUT (anyone can email one), so beyond
+    schema sanity this also rejects values that could misbehave downstream
+    (e.g., path characters in identifiers that feed archive filenames).
+    """
     for key in REQUIRED_TOP:
         if key not in data:
             raise ResponseError(f"missing field '{key}'")
@@ -43,6 +48,10 @@ def validate_response(data: dict, catalog_hash: str, known_ids: set[str],
             raise ResponseError(f"missing respondent field '{key}'")
     if not str(data["respondent"]["email"]).strip():
         raise ResponseError("empty respondent email")
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", str(data["sessionId"])):
+        raise ResponseError("sessionId contains characters the survey never produces")
+    if len(data["sets"]) > 500:
+        raise ResponseError("more screens than any survey design contains")
 
     h = data["catalogVersionHash"]
     if h != catalog_hash and h not in allow_hashes:
@@ -73,17 +82,24 @@ def validate_response(data: dict, catalog_hash: str, known_ids: set[str],
 
 
 def _slug(email: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", email.lower()).strip("-")
+    return re.sub(r"[^a-z0-9]+", "-", email.lower()).strip("-")[:80]
 
 
 def archive_filename(data: dict) -> str:
-    return f"{_slug(data['respondent']['email'])}__{data['sessionId']}.json"
+    # Both parts are re-sanitized here (defense in depth — validation already
+    # rejects hostile sessionIds) so this can never emit path separators.
+    session = re.sub(r"[^A-Za-z0-9._-]+", "-", str(data["sessionId"]))[:64]
+    return f"{_slug(data['respondent']['email'])}__{session}.json"
 
 
 def ingest_file(src: Path, archive_dir: Path, catalog_hash: str,
                 known_ids: set[str], report: IngestReport,
                 allow_hashes: set[str] = frozenset()) -> None:
     """Validate one returned file and add/replace it in the archive."""
+    if Path(src).stat().st_size > 5_000_000:
+        report.rejected.append(
+            (src.name, "over 5 MB — real result files are a few KB"))
+        return
     try:
         data = json.loads(Path(src).read_text(encoding="utf-8"))
         validate_response(data, catalog_hash, known_ids, allow_hashes)

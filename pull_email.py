@@ -105,7 +105,10 @@ def main() -> int:
             for part in msg.walk():
                 fname = part.get_filename() or ""
                 if fname.lower().endswith(".json"):
-                    (inbox / safe_name(fname)).write_bytes(part.get_payload(decode=True))
+                    payload = part.get_payload(decode=True) or b""
+                    if len(payload) > 5_000_000:  # real result files are a few KB
+                        continue
+                    (inbox / safe_name(fname)).write_bytes(payload)
                     n_json += 1
                 elif part.get_content_type() in ("text/plain", "text/html"):
                     try:
