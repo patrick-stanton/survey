@@ -32,22 +32,57 @@ class IngestReport:
     rejected: list[tuple[str, str]] = field(default_factory=list)  # (file, reason)
 
 
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
+def _clean_text(value, field_name: str, max_len: int = 200) -> str:
+    """A respondent free-text field, guaranteed printable and bounded.
+
+    Rejects control/escape characters (block terminal-escape and CSV/formula
+    tricks in the report) and over-long values. Returns the trimmed string.
+    """
+    if not isinstance(value, str):
+        raise ResponseError(f"{field_name} must be text, got {type(value).__name__}")
+    if _CONTROL_CHARS.search(value):
+        raise ResponseError(f"{field_name} contains control characters")
+    if len(value) > max_len:
+        raise ResponseError(f"{field_name} is unreasonably long ({len(value)} chars)")
+    return value.strip()
+
+
 def validate_response(data: dict, catalog_hash: str, known_ids: set[str],
-                      allow_hashes: set[str] = frozenset()) -> None:
+                      allow_hashes: set[str] = frozenset(),
+                      items_per_screen: int | None = None) -> None:
     """Raise ResponseError if this response file can't be trusted.
 
-    Response files are UNTRUSTED INPUT (anyone can email one), so beyond
-    schema sanity this also rejects values that could misbehave downstream
-    (e.g., path characters in identifiers that feed archive filenames).
+    Response files are UNTRUSTED INPUT (anyone can email one), so every branch
+    below turns a malformed or hostile value into a clean ResponseError rather
+    than letting a TypeError/KeyError escape and abort the whole ingest batch.
+    It also rejects values that could misbehave downstream: path characters in
+    identifiers (archive filenames), control characters in free text (terminal
+    escapes / CSV-formula tricks in the report), over-wide screens (which would
+    let one respondent inject a full ordering), and absurd counts.
     """
+    if not isinstance(data, dict):
+        raise ResponseError("top-level JSON is not an object")
     for key in REQUIRED_TOP:
         if key not in data:
             raise ResponseError(f"missing field '{key}'")
+    if not isinstance(data["respondent"], dict):
+        raise ResponseError("'respondent' is not an object")
+    if not isinstance(data["sets"], list):
+        raise ResponseError("'sets' is not a list")
     for key in REQUIRED_RESP:
         if key not in data["respondent"]:
             raise ResponseError(f"missing respondent field '{key}'")
-    if not str(data["respondent"]["email"]).strip():
+
+    # Free-text respondent fields: printable, bounded, control-char free.
+    email = _clean_text(data["respondent"]["email"], "email", max_len=254)
+    if not email:
         raise ResponseError("empty respondent email")
+    for fld in ("name", "role", "organization"):
+        _clean_text(data["respondent"][fld], fld)
+
     if not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", str(data["sessionId"])):
         raise ResponseError("sessionId contains characters the survey never produces")
     if len(data["sets"]) > 500:
@@ -63,12 +98,26 @@ def validate_response(data: dict, catalog_hash: str, known_ids: set[str],
 
     seen_idx = set()
     for s in data["sets"]:
+        if not isinstance(s, dict):
+            raise ResponseError("a set entry is not an object")
         for key in ["index", "shown", "skipped"]:
             if key not in s:
                 raise ResponseError(f"set missing field '{key}'")
+        if not isinstance(s["index"], int) or isinstance(s["index"], bool):
+            raise ResponseError(f"set index must be an integer, got {s['index']!r}")
+        if not isinstance(s["shown"], list):
+            raise ResponseError(f"set {s['index']} 'shown' is not a list")
         if s["index"] in seen_idx:
             raise ResponseError(f"duplicate set index {s['index']} within file")
         seen_idx.add(s["index"])
+        # Bound screen width: a hand-crafted wide screen would explode into a
+        # whole self-consistent ordering and dominate the pooled models.
+        if items_per_screen is not None and len(s["shown"]) > items_per_screen:
+            raise ResponseError(
+                f"set {s['index']} shows {len(s['shown'])} items; the design "
+                f"uses {items_per_screen} — not a genuine survey screen")
+        if len(s["shown"]) > 16:
+            raise ResponseError(f"set {s['index']} shows too many items")
         if len(s["shown"]) != len(set(s["shown"])):
             raise ResponseError(f"set {s['index']} shows a repeated item")
         unknown = [i for i in s["shown"] if i not in known_ids]
@@ -92,30 +141,73 @@ def archive_filename(data: dict) -> str:
     return f"{_slug(data['respondent']['email'])}__{session}.json"
 
 
+def _same_screen(a: dict, b: dict) -> bool:
+    """True if two set records show the same items and the same picks."""
+    return (a.get("shown") == b.get("shown") and a.get("best") == b.get("best")
+            and a.get("worst") == b.get("worst")
+            and bool(a.get("skipped")) == bool(b.get("skipped")))
+
+
 def ingest_file(src: Path, archive_dir: Path, catalog_hash: str,
                 known_ids: set[str], report: IngestReport,
-                allow_hashes: set[str] = frozenset()) -> None:
-    """Validate one returned file and add/replace it in the archive."""
-    if Path(src).stat().st_size > 5_000_000:
-        report.rejected.append(
-            (src.name, "over 5 MB — real result files are a few KB"))
-        return
+                allow_hashes: set[str] = frozenset(),
+                items_per_screen: int | None = None,
+                roster: set[str] | None = None) -> None:
+    """Validate one returned file and add/replace it in the archive.
+
+    Any unexpected error is turned into a REJECTED entry for THIS file so a
+    single malformed or hostile file can never abort the whole ingest batch.
+    """
     try:
+        if Path(src).stat().st_size > 5_000_000:
+            report.rejected.append(
+                (src.name, "over 5 MB — real result files are a few KB"))
+            return
         data = json.loads(Path(src).read_text(encoding="utf-8"))
-        validate_response(data, catalog_hash, known_ids, allow_hashes)
+        validate_response(data, catalog_hash, known_ids, allow_hashes,
+                          items_per_screen=items_per_screen)
+        if roster is not None:
+            email = str(data["respondent"]["email"]).strip().lower()
+            if email not in roster:
+                report.rejected.append(
+                    (src.name, f"respondent '{email}' is not on the invited "
+                               "roster (--roster) — possible fabricated identity"))
+                return
     except (json.JSONDecodeError, ResponseError) as exc:
         report.rejected.append((src.name, str(exc)))
+        return
+    except RecursionError:
+        report.rejected.append((src.name, "JSON nested too deeply"))
+        return
+    except Exception as exc:  # never let one file crash the batch
+        report.rejected.append((src.name, f"unreadable ({type(exc).__name__}: {exc})"))
         return
 
     dest = archive_dir / archive_filename(data)
     if dest.exists():
-        old = json.loads(dest.read_text(encoding="utf-8"))
+        try:
+            old = json.loads(dest.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            report.rejected.append((src.name, f"archived copy unreadable: {exc}"))
+            return
         if len(data["sets"]) < len(old["sets"]):
             report.rejected.append(
                 (src.name, f"older than archived copy ({len(data['sets'])} < "
                            f"{len(old['sets'])} screens) — keeping the archive version")
             )
             return
+        # A genuine re-export only APPENDS screens; the overlap must be
+        # identical. A file that changes already-recorded picks is rejected,
+        # so nobody can overwrite an existing session with different answers.
+        old_by_index = {s["index"]: s for s in old["sets"]}
+        for s in data["sets"]:
+            prior = old_by_index.get(s["index"])
+            if prior is not None and not _same_screen(s, prior):
+                report.rejected.append(
+                    (src.name, f"screen {s['index']} differs from the archived "
+                               "copy for this session — not an append-only "
+                               "re-export; keeping the original"))
+                return
         if len(data["sets"]) == len(old["sets"]):
             report.unchanged.append(src.name)
             return

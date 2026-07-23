@@ -11,3 +11,8 @@ data/out/*
 data/*_with_ids.csv
 data/decoded_codes/
 data/.pulled_messages.json
+data/roster.txt
+# Your real catalog (may hold internal names/emails in passthrough columns) is
+# gitignored so it can't be accidentally committed. The tracked example is
+# data/use_cases.sample.csv — copy it to data/use_cases.csv to start.
+data/use_cases.csv

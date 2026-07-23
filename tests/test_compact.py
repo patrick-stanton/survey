@@ -20,7 +20,7 @@ ROOT = Path(__file__).parent.parent
 
 @pytest.fixture(scope="module")
 def payload():
-    df = cat.load_catalog(ROOT / "data" / "use_cases.csv")
+    df = cat.load_catalog(ROOT / "data" / "use_cases.sample.csv")
     return build_payload(df, load_config(ROOT / "config.yaml"))
 
 
@@ -107,7 +107,7 @@ def test_ingest_reads_codes_from_txt(tmp_path, payload, result):
     import ingest as ingest_mod
 
     ws_csv = tmp_path / "use_cases.csv"
-    df = cat.load_catalog(ROOT / "data" / "use_cases.csv")
+    df = cat.load_catalog(ROOT / "data" / "use_cases.sample.csv")
     cat.write_catalog_with_ids(df, ws_csv)
 
     inbox = tmp_path / "inbox"

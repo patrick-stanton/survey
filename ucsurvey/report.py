@@ -195,10 +195,14 @@ def write_report(df: pd.DataFrame, long_df: pd.DataFrame, results: dict,
     L.append("RESPONSE QUALITY")
     L.append("-" * 72)
     if len(fast):
-        L.append("  flagged (median under 2 s/screen — possibly random clicking; data")
-        L.append("  kept, but consider a sensitivity re-run without them):")
-        for email, ms in fast.items():
-            L.append(f"    {email}  median {ms / 1000:.1f} s/screen")
+        # Report a count, not individual emails — this file is meant to be
+        # circulated, and naming respondents next to a "random clicking" label
+        # would disclose PII plus a reputational judgement. The per-respondent
+        # detail (for a sensitivity re-run) lives in the operator-only archive.
+        L.append(f"  {len(fast)} of {len(med_ms)} respondent(s) had a median under "
+                 "2 s/screen (possibly random clicking). Data kept; consider a")
+        L.append("  sensitivity re-run without them. Identities are in data/archive/, "
+                 "not this shareable report.")
     else:
         L.append("  no respondents flagged (all median response times ≥ 2 s/screen)")
     L.append("")

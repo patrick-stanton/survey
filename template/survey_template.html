@@ -436,9 +436,17 @@ function initBudget() {
     var arm = DATA.arms[armKey];
     var b = document.createElement("button");
     b.type = "button"; b.className = "btn big secondary";
-    b.innerHTML = "<strong>" + arm.label + "</strong><br><span class='muted small'>" +
-      arm.master.length + " quick screens · " + fmtMin(arm.master.length) +
-      " · every use case shown " + arm.exposure + "×</span>";
+    // Build with textContent, never innerHTML — arm.label comes from config
+    // and must never be interpreted as HTML.
+    var strong = document.createElement("strong");
+    strong.textContent = arm.label;
+    var meta = document.createElement("span");
+    meta.className = "muted small";
+    meta.textContent = arm.master.length + " quick screens · " +
+      fmtMin(arm.master.length) + " · every use case shown " + arm.exposure + "×";
+    b.appendChild(strong);
+    b.appendChild(document.createElement("br"));
+    b.appendChild(meta);
     b.onclick = function () {
       state.arm = armKey;
       state.plannedScreens = arm.master.length;

@@ -27,7 +27,7 @@ def workspace(tmp_path):
     (ws / "data").mkdir()
     # Persist minted ids, as the real workflow does (ids pasted into Cameo
     # after the first build, then present in every later export).
-    df = cat.load_catalog(ROOT / "data" / "use_cases.csv")
+    df = cat.load_catalog(ROOT / "data" / "use_cases.sample.csv")
     cat.write_catalog_with_ids(df, ws / "data" / "use_cases.csv")
     shutil.copy(ROOT / "config.yaml", ws / "config.yaml")
     return ws
@@ -107,9 +107,11 @@ def test_pipeline_recovers_ground_truth(workspace):
     assert row["p1_rank"] <= 3
     assert row["p_top10"] > 0.9
 
-    # 4) report exists, flags the random clicker, notes group agreement
+    # 4) report exists, flags the random clicker WITHOUT naming them
+    #    (PII stays in the archive), and notes group agreement
     report = (ws / "out" / "resolve_report.txt").read_text()
-    assert "clicker@example.com" in report
+    assert "possibly random clicking" in report
+    assert "clicker@example.com" not in report  # no PII in the shareable report
     assert "STAKEHOLDER AGREEMENT BY ROLE" in report
 
     # 5) determinism: resolve again -> byte-identical outputs

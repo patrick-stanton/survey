@@ -91,6 +91,13 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     cfg = load_config(args.config)
+    sample = args.csv.with_name("use_cases.sample.csv")
+    if not args.csv.exists() and sample.exists():
+        print(f"'{args.csv}' not found. Copy the example to start:\n"
+              f"    cp {sample} {args.csv}\n"
+              "then replace its rows with your Cameo export and rebuild.",
+              file=sys.stderr)
+        return 1
     df = cat.load_catalog(args.csv)
 
     if df.attrs["minted"]:
@@ -114,9 +121,11 @@ def main(argv=None) -> int:
         return 1
     # </ must not appear inside the inline <script> JSON block
     injected = json.dumps(payload, separators=(",", ":")).replace("</", "<\\/")
+    safe_title = (payload["title"].replace("&", "&amp;").replace("<", "&lt;")
+                  .replace(">", "&gt;"))
     html = html.replace(MARKER, injected).replace(
         "<title>Use Case Prioritization Survey</title>",
-        f"<title>{payload['title']}</title>",
+        f"<title>{safe_title}</title>",
     )
 
     args.out.mkdir(parents=True, exist_ok=True)

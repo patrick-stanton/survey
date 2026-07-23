@@ -35,7 +35,8 @@ def launch_chromium(p):
 def survey_html(tmp_path_factory):
     out = tmp_path_factory.mktemp("dist")
     subprocess.run(
-        [sys.executable, str(ROOT / "build_survey.py"), "--out", str(out)],
+        [sys.executable, str(ROOT / "build_survey.py"), "--out", str(out),
+         "--csv", str(ROOT / "data" / "use_cases.sample.csv")],
         check=True, capture_output=True, text=True, cwd=ROOT,
     )
     return out / "survey.html"
@@ -94,7 +95,7 @@ def test_full_short_session_with_download(survey_html, tmp_path):
     # The browser-derived screens must equal the Python derivation (parity!)
     from ucsurvey import catalog as cat, design
     from build_survey import build_payload, load_config
-    df = cat.load_catalog(ROOT / "data" / "use_cases.csv")
+    df = cat.load_catalog(ROOT / "data" / "use_cases.sample.csv")
     payload = build_payload(df, load_config(ROOT / "config.yaml"))
     expected = design.derive_respondent_sets(
         payload["arms"]["short"]["master"], [r["id"] for _, r in df.iterrows()],

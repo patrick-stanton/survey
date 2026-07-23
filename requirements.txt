@@ -1,12 +1,20 @@
 # Core requirements — the pipeline runs with just these.
-numpy
-pandas
-PyYAML
+# Version bounds are pinned to major ranges so an install is reproducible and a
+# surprise breaking (or hijacked) release is not silently pulled. On a restricted
+# network, install from your organization's vetted internal mirror, not public
+# PyPI. For a fully reproducible, hash-verified install, generate a lockfile:
+#   pip install pip-tools && pip-compile --generate-hashes requirements.txt
+#   pip install --require-hashes -r requirements.txt.lock
+numpy>=1.26,<3
+pandas>=2.0,<3
+PyYAML>=6.0,<7
 
 # Recommended extras — resolve.py automatically uses them when present,
 # and falls back to built-in implementations when absent.
-#   choix        : Bradley-Terry / Plackett-Luce estimation (P3) + Bayesian posterior (P4)
-#   scipy        : rank-correlation diagnostics in the resolve report (Kendall tau)
-# Install with:  pip install choix scipy
-choix
-scipy
+#   choix : Bradley-Terry / Plackett-Luce (P3) + Bayesian posterior (P4).
+#           Low-download, single-maintainer package — review before adopting on
+#           a restricted network; the pipeline runs without it (built-in fallback).
+#   scipy : rank-correlation diagnostics in the resolve report.
+# Install with:  pip install "choix>=0.3,<1" "scipy>=1.10,<2"
+choix>=0.3,<1
+scipy>=1.10,<2

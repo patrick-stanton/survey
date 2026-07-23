@@ -62,7 +62,7 @@ def test_lineage_map_and_conflicts(tmp_path):
 
 
 def test_example_catalog_loads():
-    df = catalog.load_catalog("data/use_cases.csv")
+    df = catalog.load_catalog("data/use_cases.sample.csv")
     assert len(df) == 60
     assert len(df.attrs["minted"]) == 60
     assert df["category"].nunique() == 6

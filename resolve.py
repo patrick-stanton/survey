@@ -41,6 +41,9 @@ def main(argv=None) -> int:
     ap.add_argument("--lineage", choices=["strict", "inherit"], default=None,
                     help="override the config's lineage mode")
     ap.add_argument("--fast", action="store_true", help="200 bootstrap draws instead of full")
+    ap.add_argument("--as-of", default=None, metavar="YYYY-MM-DD",
+                    help="date to stamp in outputs (default: today). Set this to "
+                    "make the whole run byte-for-byte reproducible.")
     args = ap.parse_args(argv)
 
     with open(args.config, encoding="utf-8") as fh:
@@ -107,7 +110,7 @@ def main(argv=None) -> int:
             "alpha": alpha, "n_boot": n_boot, "seed": seed, "top_n": top_n,
             "lineage": lineage,
             "catalog_hash": cat.catalog_hash(df),
-            "resolved_at": datetime.date.today().isoformat(),
+            "resolved_at": args.as_of or datetime.date.today().isoformat(),
         },
     }
     if not p4_bayes_bt.available:

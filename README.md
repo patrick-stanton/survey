@@ -42,10 +42,17 @@ profile (P4) and richer diagnostics, but every core result works without them.
 
 ### 1. Export use cases from Cameo → `data/use_cases.csv`
 
-The CSV needs a `name` column; `description`, `category`, `id`, and
-`supersedes` are understood when present. **Every other column is passed
-through untouched** and comes back in the enriched output, so your stereotype
-can evolve freely.
+Start from the tracked example (your real catalog is gitignored so it can never
+be committed by accident):
+
+```bash
+cp data/use_cases.sample.csv data/use_cases.csv
+```
+
+then replace its rows with your Cameo export. The CSV needs a `name` column;
+`description`, `category`, `id`, and `supersedes` are understood when present.
+**Every other column is passed through untouched** and comes back in the
+enriched output, so your stereotype can evolve freely.
 
 In Cameo 2026x (same steps in 2024x):
 
@@ -108,7 +115,8 @@ Any mix of these works — everything funnels into the same archive:
 Then:
 
 ```bash
-python ingest.py
+python ingest.py                          # validate everything in data/inbox/
+python ingest.py --roster data/roster.txt # optional: only accept invited emails
 ```
 
 Files are validated and moved into the append-only `data/archive/`. Run it as
@@ -116,6 +124,10 @@ often as you like; re-submissions of the same session replace their older,
 shorter copy, and nothing else is ever modified. If a file was collected
 against an older wording of the catalog, ingest refuses it and shows the
 `--allow-catalog <hash>` flag to accept it deliberately.
+
+Respondent identity is self-declared, so for a high-stakes survey supply a
+`data/roster.txt` (one invited email per line) and pass `--roster`; responses
+from any other address are rejected. See [SECURITY.md](SECURITY.md).
 
 ### 5. Resolve and re-import into Cameo
 

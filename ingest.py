@@ -39,7 +39,14 @@ def expand_codes_to_json(txt_files: list[Path], df, config_path: Path,
     """Decode every UCS1 code found in the .txt files into staged .json files."""
     codes = []
     for f in txt_files:
-        found = compact.find_codes(f.read_text(encoding="utf-8", errors="replace"))
+        try:
+            if f.stat().st_size > 5_000_000:  # match the .json size guard
+                report.rejected.append((f.name, "over 5 MB — real code files are tiny"))
+                continue
+            found = compact.find_codes(f.read_text(encoding="utf-8", errors="replace"))
+        except OSError as exc:
+            report.rejected.append((f.name, f"unreadable: {exc}"))
+            continue
         if not found:
             report.rejected.append((f.name, "no UCS1 results code found in file"))
         codes += [(f.name, c) for c in found]
@@ -57,6 +64,9 @@ def expand_codes_to_json(txt_files: list[Path], df, config_path: Path,
             data = compact.decode(code, payload)
         except compact.CodeError as exc:
             report.rejected.append((src_name, str(exc)))
+            continue
+        except Exception as exc:  # a malformed code can never abort the batch
+            report.rejected.append((src_name, f"undecodable ({type(exc).__name__})"))
             continue
         p = staging / arc.archive_filename(data)
         if p.exists():  # same session coded twice: keep the longer export
@@ -79,11 +89,26 @@ def main(argv=None) -> int:
     ap.add_argument("--allow-catalog", action="append", default=[],
                     metavar="HASH", help="also accept responses collected against "
                     "this older catalog version (repeatable)")
+    ap.add_argument("--roster", type=Path, default=None, metavar="FILE",
+                    help="optional file of invited respondent emails (one per "
+                    "line); responses from any other address are rejected")
     args = ap.parse_args(argv)
 
     df = cat.load_catalog(args.csv)
     current_hash = cat.catalog_hash(df)
     known_ids = set(df["id"])
+
+    # Design width (bounds screen size at validation) and optional roster.
+    try:
+        cfg = yaml.safe_load(args.config.read_text(encoding="utf-8"))
+        items_per_screen = int(cfg.get("survey", {}).get("items_per_screen", 4))
+    except (OSError, yaml.YAMLError, ValueError, TypeError):
+        items_per_screen = None
+    roster = None
+    if args.roster:
+        roster = {ln.strip().lower() for ln in args.roster.read_text(
+            encoding="utf-8").splitlines() if ln.strip() and not ln.startswith("#")}
+        print(f"Roster: {len(roster)} invited addresses; others will be rejected.")
 
     sources = args.sources or [HERE / "data" / "inbox"]
     files: list[Path] = []
@@ -107,7 +132,8 @@ def main(argv=None) -> int:
                                       args.archive.parent / "decoded_codes", report)
     for f in files:
         arc.ingest_file(f, args.archive, current_hash, known_ids, report,
-                        allow_hashes=set(args.allow_catalog))
+                        allow_hashes=set(args.allow_catalog),
+                        items_per_screen=items_per_screen, roster=roster)
 
     for name in report.accepted:
         print(f"  + {name}")
@@ -119,8 +145,8 @@ def main(argv=None) -> int:
         print(f"  ! {name} REJECTED: {reason}")
 
     long_df = arc.load_archive(args.archive)
-    print(f"\nArchive now holds {long_df['email'].nunique() if not long_df.empty else 0} "
-          f"respondents, "
+    n_resp = long_df["email"].nunique() if not long_df.empty else 0
+    print(f"\nArchive now holds {n_resp} respondents, "
           f"{long_df.drop_duplicates(['email','session_id','set_index']).shape[0] if not long_df.empty else 0} "
           f"answered screens.")
     if not long_df.empty:
@@ -130,6 +156,15 @@ def main(argv=None) -> int:
         print(f"Per-item exposures: min {exposures.min()}, median "
               f"{int(exposures.median())}, max {exposures.max()}."
               + (f" {len(low)} items under 10 exposures." if len(low) else ""))
+        # Identity is self-declared and unauthenticated. Surface how many
+        # distinct sessions each respondent submitted so an operator can spot
+        # one person impersonating a crowd (see SECURITY.md).
+        sess = long_df.groupby("email")["session_id"].nunique().sort_values(ascending=False)
+        multi = sess[sess > 1]
+        if len(multi):
+            print(f"NOTE: {len(multi)} respondent(s) submitted more than one session "
+                  f"(top: {multi.index[0]} ×{multi.iloc[0]}). Reconcile against your "
+                  "invite list before treating the ranking as decision-grade.")
     print("Next: python resolve.py")
     return 2 if report.rejected else 0
 

@@ -113,11 +113,25 @@ def decode(code: str, payload: dict) -> dict:
     if len(body) % 2:
         raise CodeError("corrupted code: odd payload length")
 
+    # Bound extraBlocks BEFORE using it to drive the loop below: it comes
+    # straight from the attacker-controlled header, and an arbitrarily large
+    # value would spin the loop / grow `plan` without limit (CPU/RAM DoS).
+    x = header.get("x", 0)
+    if isinstance(x, bool) or not isinstance(x, int):
+        raise CodeError(f"invalid extraBlocks {x!r}")
+    max_extra = int(payload.get("maxExposure", 5))
+    if not 0 <= x <= max_extra:
+        raise CodeError(f"extraBlocks {x} out of range (0..{max_extra})")
+
+    arm = header.get("a")
+    if arm not in payload["arms"]:
+        raise CodeError(f"unknown arm {arm!r}")
+
     item_ids = [it["id"] for it in payload["catalog"]]
     email = str(header["e"]).lower()
     seed = f"{email}|{header['s']}"
-    plan = derive_respondent_sets(payload["arms"][header["a"]]["master"], item_ids, seed)
-    for b in range(1, int(header["x"]) + 1):
+    plan = derive_respondent_sets(payload["arms"][arm]["master"], item_ids, seed)
+    for b in range(1, x + 1):
         plan += derive_respondent_sets(payload["continuationMaster"], item_ids,
                                        f"{seed}|cont{b}")
     n_sets = len(body) // 2
