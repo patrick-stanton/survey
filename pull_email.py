@@ -104,7 +104,7 @@ def main() -> int:
             sender = safe_name(msg.get("From", "unknown"))
             for part in msg.walk():
                 fname = part.get_filename() or ""
-                if fname.lower().endswith(".json"):
+                if fname.lower().endswith((".csv", ".json")):
                     payload = part.get_payload(decode=True) or b""
                     if len(payload) > 5_000_000:  # real result files are a few KB
                         continue
@@ -115,17 +115,18 @@ def main() -> int:
                         text = part.get_content()
                     except Exception:
                         continue
-                    codes = find_codes(text)
-                    if codes:
-                        out = inbox / f"code_{sender}_{safe_name(uid)}.txt"
-                        out.write_text("\n".join(codes), encoding="utf-8")
-                        n_codes += len(codes)
+                    # The survey pastes the CSV into the email body; save it so
+                    # ingest can read it. (Legacy UCS1 codes are saved too.)
+                    if "ucsurvey_csv" in text or find_codes(text):
+                        out = inbox / f"email_{sender}_{safe_name(uid)}.txt"
+                        out.write_text(text, encoding="utf-8")
+                        n_codes += 1
             seen.add(uid)
     finally:
         conn.logout()
 
     save_seen(seen)
-    print(f"Saved {n_json} .json attachment(s) and {n_codes} results code(s) "
+    print(f"Saved {n_json} attachment(s) and {n_codes} email-body result(s) "
           f"to {inbox} ({n_skipped} previously pulled, skipped).")
     if n_json or n_codes:
         print("Next: python ingest.py")

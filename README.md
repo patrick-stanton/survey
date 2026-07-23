@@ -6,19 +6,24 @@ results back into your Cameo model as CSV.
 
 ```
 Cameo model ──CSV──► build_survey.py ──► survey.html ──► respondents (10–60 min each)
-                                                              │  results .json files
-Cameo model ◄──CSV── resolve.py ◄── data/archive/ ◄── ingest.py
+                                                              │  results .csv files
+Cameo model ◄─rank─ resolve.py ◄── data/archive/active/ ◄── ingest.py ◄── survey_inbox/
 ```
 
-- The survey is **one self-contained HTML file**. Email it (zipped) or drop it
-  on SharePoint. It runs entirely in the respondent's browser — no network, no
-  install — and produces a small `.json` results file they send back.
+- The survey is **one self-contained HTML file**. Drop it on SharePoint or email
+  it (zipped). It runs entirely in the respondent's browser — no network, no
+  install — and produces a **legible results CSV** they send back.
 - Respondents pick a time budget (~10 min or ~30–60 min) and can **quit at any
   time**: every answered screen is kept and used.
 - Results pool across days and weeks: ingest 5 interviews today and 10
   tomorrow; `resolve.py` always recomputes from everything collected so far.
+- **Bad data is removable** after the fact (`exclude.py`, never deletes), and a
+  **changing use-case list** is handled by stable ids + guided reconciliation.
+  See [docs/DATA_MODEL.md](docs/DATA_MODEL.md).
 - Five aggregation profiles, from hand-checkable counting to Bayesian
   intervals, with group-agreement diagnostics. See [METHODOLOGY.md](METHODOLOGY.md).
+- Cameo gets **only the rank** (`cameo_import.csv`); the full detail lives in the
+  enriched CSV and a shareable **web dashboard** (`report.html`).
 
 ## Setup (once)
 
@@ -86,107 +91,97 @@ python build_survey.py
 **Distribute the `.zip` or a SharePoint/OneDrive link** — many Outlook/M365
 tenants block bare `.html` attachments as phishing suspects.
 
-### 3. Respondents take the survey — and one-click email it back
+### 3. Respondents take the survey — and send back a CSV
 
-Before building, set `survey.return_email` in `config.yaml` to the address
-where results should land (yours, or a mailbox you create for the effort).
+Before building, set `survey.return_email` in `config.yaml` to the address where
+results should land (yours, or a dedicated mailbox for the effort).
 
 Respondents open `survey.html`, fill in who they are, pick a time budget, and
-answer best/worst screens. Their browser saves progress after every screen
-(they can close and resume). When they finish — or stop early — they click
-**Email my results**: their own mail client opens a pre-addressed draft whose
-body contains a short `UCS1...` results code (the whole session compressed —
-no attachment to find, nothing to save), and they press Send. Fallbacks are
-always visible: **Download results file** (`.json`) and **Copy results code**.
+answer best/worst screens. Their browser saves progress after every screen (they
+can close and resume). When they finish — or stop early — they get a **legible
+results CSV**: **Download results file** saves it, and **Email my results** opens
+a pre-addressed draft with the CSV both attached-and-pasted-in-the-body so they
+just press Send. The CSV carries an embedded checksum (catches corruption); its
+integrity against fabrication is enforced at ingest (see [SECURITY.md](SECURITY.md)).
 
-### 4. Get the results into data/inbox/ and ingest
+### 4. Collect the CSVs into a folder and ingest
 
-Any mix of these works — everything funnels into the same archive:
+The tool is **folder-based**: however results arrive, gather them into
+`data/survey_inbox/`. Options:
 
-- **Automatic**: fill in the `email_pull` section of `config.yaml` and run
-  `python pull_email.py` — it connects to your mailbox over IMAP (password
-  prompted, never stored), finds the survey emails, and drops their codes and
-  attachments into `data/inbox/`. Some corporate O365 tenants disable IMAP;
-  then use:
-- **Manual, still easy**: select the result emails in Outlook and save them as
-  `.txt` into `data/inbox/` (ingest reads `UCS1` codes straight out of saved
-  emails), and/or drop returned `.json` files there.
+- **Manual (simplest, most resilient):** save the CSV attachments (or the whole
+  email as `.txt`) into `data/survey_inbox/`. You can inspect or remove any file.
+- **Automatic email pull:** fill in the `email_pull` section of `config.yaml` and
+  run `python pull_email.py` (IMAP; password prompted, never stored). Some O365
+  tenants disable IMAP — then use the manual path.
 
 Then:
 
 ```bash
-python ingest.py                          # validate everything in data/inbox/
+python ingest.py                          # validate everything in survey_inbox/
 python ingest.py --roster data/roster.txt # optional: only accept invited emails
 ```
 
-Files are validated and moved into the append-only `data/archive/`. Run it as
-often as you like; re-submissions of the same session replace their older,
-shorter copy, and nothing else is ever modified. If a file was collected
-against an older wording of the catalog, ingest refuses it and shows the
-`--allow-catalog <hash>` flag to accept it deliberately.
+Each file is validated (schema, checksum) **and re-checked against the design it
+claims to come from** (fabricated screens are rejected), then stored in
+`data/archive/active/`. A re-submission may only ADD screens — it can never
+overwrite recorded picks. Run it as often as you like.
 
-Respondent identity is self-declared, so for a high-stakes survey supply a
-`data/roster.txt` (one invited email per line) and pass `--roster`; responses
-from any other address are rejected. See [SECURITY.md](SECURITY.md).
-
-### 5. Resolve and re-import into Cameo
+### 5. Resolve, then import the ranking into Cameo
 
 ```bash
-python resolve.py            # full run
+python resolve.py            # full run (bootstrap intervals)
 python resolve.py --fast     # quick look while data is still arriving
 ```
 
 Outputs in `data/out/`:
 
-- **`use_cases_enriched.csv`** — your original CSV plus, per use case:
-  `p1_score`/`p1_rank` (hand-checkable counting), `p2_copeland`/`p2_rank`
-  (majority logic), `p3_bt_share`/`p3_rank` (statistical model),
-  `rank_low90`/`rank_high90`/`p_top10` (how certain the rank is),
-  `n_respondents`, `n_exposures`, `consensus_flag`, `last_aggregated`,
-  `profiles_used`.
-- **`resolve_report.txt`** — the full ranking with uncertainty, where the
-  profiles disagree, how stakeholder groups (roles/organizations) agree or
-  conflict, response-quality flags, and coverage warnings.
+- **`cameo_import.csv`** — the file for Cameo: `surveyId`, `rank`, `n_respondents`.
+  The model stays clean; the ranking is the decision.
+- **`report.html`** — a shareable, self-contained **dashboard**: the full ranking
+  with confidence bars, method comparison, role/organization lenses, contested
+  items, quality and coverage. Hand it to anyone for the deep dive.
+- **`use_cases_enriched.csv`** — your catalog plus every score, rank, interval,
+  and flag (for your own analysis).
+- **`resolve_report.txt`** — the same detail in plain text.
 
-To pull the scores into Cameo: add tags for the result columns you want on
-your stereotype (`Real` for scores, `Integer` for ranks, `String` for flags),
-show them as columns in the same generic table, link
-`data/out/use_cases_enriched.csv` in Excel/CSV Sync, set the sync's
-**Identification Property to `surveyId`** (never Name — renames would create
-duplicates), and click **Read From File**. Save the mapping once
-(File ▸ Import From ▸ Excel/CSV File ▸ *Saving an Import Map*) and every
-future refresh is one click.
+Import into Cameo: show a `rank` tag as a column on your stereotype's generic
+table, link `data/out/cameo_import.csv` in Excel/CSV Sync, set **Identification
+Property = `surveyId`** (never Name), deletion policy **Mark as obsolete**, and
+click **Read From File**. Save the map once and future refreshes are one click.
 
-## When use cases change between survey rounds
+## Removing bad data & handling a changing use-case list
 
-Reword freely — the catalog hash tells ingest when wording changed, and you
-decide with `--allow-catalog` whether old answers still apply. When you
-**merge or replace** use cases, give the successor a `supersedes` column entry
-listing the old ids (`UC-004;UC-017`), then choose at resolve time:
+These are covered in depth in **[docs/DATA_MODEL.md](docs/DATA_MODEL.md)**. In brief:
 
 ```bash
-python resolve.py --lineage strict    # current items only (default)
-python resolve.py --lineage inherit   # predecessors' votes count for the successor
+python exclude.py --list                              # audit the archive
+python exclude.py --before 2026-07-01 --reason bad-link   # quarantine (never deletes)
+python reconcile.py                                   # map renamed/split/merged use cases
 ```
 
-Raw archived answers are never rewritten either way — the mapping is applied
-at analysis time and recorded in the outputs, which is what keeps the process
-auditable.
+`surveyId` is the permanent anchor: keep ids stable and votes carry across
+rewordings automatically. When you split/merge/drop use cases, `reconcile.py`
+walks you through each change once and remembers it; splits carry the parent's
+priority to every child. `resolve` refuses to run on unmapped changes so real
+data is never silently dropped.
 
 ## Project layout
 
 ```
 config.yaml            survey + analysis configuration (commented)
-build_survey.py        CSV + config → dist/survey.html
-pull_email.py          your mailbox → data/inbox/  (optional IMAP automation)
-ingest.py              returned .json/.txt results → data/archive/
-resolve.py             archive → enriched CSV + report  → import into Cameo
+build_survey.py        catalog + config → dist/survey.html (+ version snapshot)
+pull_email.py          your mailbox → data/survey_inbox/  (optional IMAP)
+ingest.py              survey_inbox → data/archive/active/  (validate + re-derive)
+exclude.py             quarantine suspect responses (never deletes)
+reconcile.py           interactively map retired use cases to current ones
+resolve.py             archive → cameo_import.csv + report.html + enriched CSV
+demo.py                one-command end-to-end demo on simulated data
 ucsurvey/              the library behind the scripts
 template/              the survey app template
-windows/               double-click .bat wrappers for the four steps
-data/use_cases.csv     your catalog (example included)
-data/inbox|archive|out collection folders
-tests/                 unit + end-to-end simulation suite (pytest)
+windows/               double-click .bat wrappers
+data/                  catalog, survey_inbox, archive, out, lineage, snapshots
+tests/                 unit + end-to-end suite (pytest)
 ```
 
 ## Verifying the pipeline
@@ -197,7 +192,8 @@ See the whole loop in one command (simulated data, ~30 s):
 python demo.py
 ```
 
-Run the test suite (61 tests, incl. 19 adversarial security tests):
+Run the test suite (incl. adversarial security, split-carryover, and
+retroactive-exclusion end-to-end tests):
 
 ```bash
 pip install pytest && python -m pytest tests/

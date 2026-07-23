@@ -29,6 +29,7 @@ from ucsurvey import lineage as lin
 from ucsurvey.explode import exploded_pairs, sets_per_respondent
 from ucsurvey.profiles import p1_counts, p2_copeland, p3_bradley_terry, p4_bayes_bt, p5_bootstrap
 from ucsurvey.report import write_enriched_csv, write_report, write_cameo_import
+from ucsurvey.report_web import write_web_report
 
 HERE = Path(__file__).parent
 
@@ -140,10 +141,12 @@ def main(argv=None) -> int:
     csv_path = write_enriched_csv(df, long_df, results, args.out / "use_cases_enriched.csv")
     rpt_path = write_report(df, long_df, results, args.out / "resolve_report.txt")
     cameo_path = write_cameo_import(df, long_df, results, args.out / "cameo_import.csv")
+    web_path = write_web_report(df, long_df, results, args.out / "report.html")
     print(f"Wrote {csv_path}")
     print(f"Wrote {rpt_path}")
+    print(f"Wrote {web_path}  <- shareable deep-dive dashboard (open in a browser)")
     print(f"Wrote {cameo_path}  <- import THIS into Cameo (surveyId + rank only)")
-    print("The enriched CSV and the report keep the full detail for analysis.")
+    print("The enriched CSV, report, and dashboard keep the full detail for analysis.")
     return 0
 
 

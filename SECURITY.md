@@ -45,6 +45,9 @@ and (b) skewing the prioritization. Both are addressed below.
 | One poisoned file in a batch | Per-file isolation — every other file still ingests |
 | Oversized file / code | 5 MB cap on both `.json` and `.txt` paths |
 | A 60-item "mega-screen" injecting a whole ordering | Screen width validated against the design |
+| A fabricated results CSV (hand-edited screens) | Ingest **re-derives** each respondent's expected screens and rejects any that don't match — a legible CSV is as trustworthy as an encoded blob |
+| A corrupted results CSV | Embedded SHA-256 checksum flags it (corruption detection; not tamper-proof — the survey that computes it runs on the respondent's machine) |
+| Data later found to be bad | `exclude.py` quarantines it (never deletes); resolve recomputes and reports the exclusion |
 | Control/terminal-escape chars in name/role/org/email | Rejected at ingest |
 | Overwriting a colleague's recorded session | Supersede requires an append-only match; tampered re-exports rejected |
 | PII in the shareable report | Response-quality flag is an aggregate count; no emails named |
