@@ -77,6 +77,7 @@ def test_full_short_session_with_download(survey_html, tmp_path):
             page.locator("#downloadBtn").click()
         path = tmp_path / dl.value.suggested_filename
         dl.value.save_as(path)
+        page_code = page.evaluate("buildCompactCode()")
         browser.close()
 
     result = json.loads(path.read_text())
@@ -100,6 +101,12 @@ def test_full_short_session_with_download(survey_html, tmp_path):
         result["designSeed"],
     )
     assert [s["shown"] for s in result["sets"]] == expected[:4]
+
+    # The page's emailable compact code must decode to the same answers
+    from ucsurvey import compact
+    decoded = compact.decode(page_code, payload)
+    assert [(s["best"], s["worst"], s["skipped"]) for s in decoded["sets"]] == \
+           [(s["best"], s["worst"], s["skipped"]) for s in result["sets"]]
 
 
 def test_resume_after_abort(survey_html):

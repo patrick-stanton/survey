@@ -28,6 +28,12 @@ Requires Python 3.10+.
 pip install -r requirements.txt
 ```
 
+**Windows, no command line**: the `windows/` folder has double-clickable
+wrappers — `1_build_survey.bat`, `2_pull_email.bat`, `3_ingest.bat`,
+`4_resolve.bat` — that run the whole workflow in order. They need Python
+installed (python.org installer or an approved Anaconda; no admin rights
+required with the "just for me" install option).
+
 If your network blocks some packages: the pipeline runs on just
 `numpy pandas PyYAML`; installing `choix` and `scipy` unlocks the Bayesian
 profile (P4) and richer diagnostics, but every core result works without them.
@@ -73,17 +79,33 @@ python build_survey.py
 **Distribute the `.zip` or a SharePoint/OneDrive link** — many Outlook/M365
 tenants block bare `.html` attachments as phishing suspects.
 
-### 3. Respondents take the survey
+### 3. Respondents take the survey — and one-click email it back
 
-They open `survey.html`, fill in who they are, pick a time budget, and answer
-best/worst screens. Their browser saves progress after every screen (they can
-close and resume). At the end — or whenever they stop — they click **Download
-results file** and email you the `.json` (there's also a copy-to-clipboard
-fallback). Aborted halfway? Still useful: send the file anyway.
+Before building, set `survey.return_email` in `config.yaml` to the address
+where results should land (yours, or a mailbox you create for the effort).
 
-### 4. Ingest returned files
+Respondents open `survey.html`, fill in who they are, pick a time budget, and
+answer best/worst screens. Their browser saves progress after every screen
+(they can close and resume). When they finish — or stop early — they click
+**Email my results**: their own mail client opens a pre-addressed draft whose
+body contains a short `UCS1...` results code (the whole session compressed —
+no attachment to find, nothing to save), and they press Send. Fallbacks are
+always visible: **Download results file** (`.json`) and **Copy results code**.
 
-Drop the returned `.json` files into `data/inbox/`, then:
+### 4. Get the results into data/inbox/ and ingest
+
+Any mix of these works — everything funnels into the same archive:
+
+- **Automatic**: fill in the `email_pull` section of `config.yaml` and run
+  `python pull_email.py` — it connects to your mailbox over IMAP (password
+  prompted, never stored), finds the survey emails, and drops their codes and
+  attachments into `data/inbox/`. Some corporate O365 tenants disable IMAP;
+  then use:
+- **Manual, still easy**: select the result emails in Outlook and save them as
+  `.txt` into `data/inbox/` (ingest reads `UCS1` codes straight out of saved
+  emails), and/or drop returned `.json` files there.
+
+Then:
 
 ```bash
 python ingest.py
@@ -144,10 +166,12 @@ auditable.
 ```
 config.yaml            survey + analysis configuration (commented)
 build_survey.py        CSV + config → dist/survey.html
-ingest.py              returned .json files → data/archive/
-resolve.py             archive → enriched CSV + report
-ucsurvey/              the library behind the three scripts
+pull_email.py          your mailbox → data/inbox/  (optional IMAP automation)
+ingest.py              returned .json/.txt results → data/archive/
+resolve.py             archive → enriched CSV + report  → import into Cameo
+ucsurvey/              the library behind the scripts
 template/              the survey app template
+windows/               double-click .bat wrappers for the four steps
 data/use_cases.csv     your catalog (example included)
 data/inbox|archive|out collection folders
 tests/                 unit + end-to-end simulation suite (pytest)

@@ -192,14 +192,13 @@
     <div class="panel">
       <h2 id="finishTitle">Thank you!</h2>
       <p id="finishSummary"></p>
-      <p class="muted small">Last step — takes ten seconds:</p>
-      <p><strong>1.</strong> Download your results file.<br>
-         <strong>2.</strong> Send it back to us (email or the shared folder in the invitation).</p>
+      <p class="muted small" id="finishHowTo">Last step — takes ten seconds:</p>
       <div class="btnrow">
-        <button class="btn" id="downloadBtn" type="button">Download results file</button>
-        <button class="btn secondary" id="copyBtn" type="button">Copy results to clipboard</button>
+        <button class="btn" id="emailBtn" type="button" style="display:none">Email my results</button>
+        <button class="btn secondary" id="downloadBtn" type="button">Download results file</button>
+        <button class="btn secondary" id="copyBtn" type="button">Copy results code</button>
       </div>
-      <p class="small" id="downloadOk" style="display:none;margin-top:10px"><span class="checkmark">✓</span> Saved. Please email the file back — that’s it!</p>
+      <p class="small" id="downloadOk" style="display:none;margin-top:10px"><span class="checkmark">✓</span> Done — if an email draft opened, just press Send. Otherwise email us the downloaded file.</p>
       <textarea id="copyArea" readonly aria-label="Survey results JSON"></textarea>
       <div class="btnrow" id="moreRow" style="display:none">
         <button class="btn secondary" id="moreBtn" type="button"></button>
@@ -260,6 +259,23 @@ function deriveRespondentSets(master, itemIds, seedStr) {
   return sets.map(function (s) { return shuffled(s, rand); });
 }
 //<RNG-PARITY-END>
+
+//<COMPACT-PARITY-START>  (mirrored by ucsurvey/compact.py; tests enforce parity)
+function b64url(binaryStr) {
+  return btoa(binaryStr).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function encodeCompactCode(header, picks) {
+  // picks: [{skipped, bestPos, worstPos, ms}] with positions in shown order
+  var hjson = JSON.stringify(header);
+  var hb64 = b64url(unescape(encodeURIComponent(hjson)));  // UTF-8 safe
+  var bytes = "";
+  picks.forEach(function (p) {
+    bytes += String.fromCharCode(p.skipped ? 255 : p.bestPos * 4 + p.worstPos);
+    bytes += String.fromCharCode(Math.min(254, Math.round((p.ms || 0) / 100)));
+  });
+  return "UCS1." + hb64 + "." + b64url(bytes);
+}
+//<COMPACT-PARITY-END>
 
 var DATA = JSON.parse(document.getElementById("survey-data").textContent);
 var ITEMS = {};
@@ -557,6 +573,12 @@ function finish(early) {
       : "You compared use cases on " + answered + " screens" +
         (complete ? " — the full set. " : ". ") +
         "Your answers are packaged below.";
+  var hasEmail = !!DATA.returnEmail;
+  document.getElementById("emailBtn").style.display =
+    hasEmail && answered > 0 ? "inline-block" : "none";
+  document.getElementById("finishHowTo").textContent = hasEmail
+    ? "Last step — one click: “Email my results” opens a pre-addressed draft; just press Send."
+    : "Last step — takes ten seconds: download your results file and email it back to us.";
   document.getElementById("resumeRow").style.display = complete ? "none" : "flex";
   document.getElementById("backToTask").onclick = function () { nextTask(); };
   var moreRow = document.getElementById("moreRow");
@@ -582,6 +604,46 @@ function resultFilename() {
   var slug = state.respondent.email.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "");
   return "usecase-survey_" + slug + "_" + state.sessionId + ".json";
 }
+function buildCompactCode() {
+  var r = state.respondent;
+  var header = {
+    v: 1, s: state.sessionId, e: r.email, n: r.name, r: r.role,
+    o: r.organization, f: r.familiarity, a: state.arm, x: state.extraBlocks,
+    h: state.catalogVersionHash, g: DATA.designHash,
+    t: state.startedAt, d: new Date().toISOString()
+  };
+  var picks = state.sets.map(function (s) {
+    return {
+      skipped: s.skipped,
+      bestPos: s.skipped ? 0 : s.shown.indexOf(s.best),
+      worstPos: s.skipped ? 0 : s.shown.indexOf(s.worst),
+      ms: s.responseMs
+    };
+  });
+  return encodeCompactCode(header, picks);
+}
+function doEmail() {
+  var code = buildCompactCode();
+  var body = "Hello,\n\nMy use case survey results are in the code below — " +
+    "nothing else needed, just press Send.\n\n" + code + "\n\n" +
+    state.respondent.name + " (" +
+    state.sets.filter(function (s) { return !s.skipped; }).length + " screens)\n";
+  var url = "mailto:" + DATA.returnEmail +
+    "?subject=" + encodeURIComponent(DATA.returnSubject + " - " + state.respondent.name) +
+    "&body=" + encodeURIComponent(body);
+  if (url.length > 1900) {
+    // Very long session + long name can exceed conservative mailto limits:
+    // fall back to attach-the-download instructions.
+    doDownload();
+    url = "mailto:" + DATA.returnEmail +
+      "?subject=" + encodeURIComponent(DATA.returnSubject + " - " + state.respondent.name) +
+      "&body=" + encodeURIComponent(
+        "Hello,\n\nMy survey results file just downloaded (check Downloads for " +
+        resultFilename() + ") - please find it attached.\n\n" + state.respondent.name + "\n");
+  }
+  document.getElementById("downloadOk").style.display = "block";
+  window.location.href = url;
+}
 function doDownload() {
   var json = JSON.stringify(buildResult(), null, 1);
   try {
@@ -605,14 +667,14 @@ function showCopyArea(json, msg) {
   if (msg) alert(msg);
 }
 function doCopy() {
-  var json = JSON.stringify(buildResult(), null, 1);
+  var text = buildCompactCode();
   function fallback() {
     var ta = document.getElementById("copyArea");
-    ta.value = json; ta.style.display = "block"; ta.focus(); ta.select();
+    ta.value = text; ta.style.display = "block"; ta.focus(); ta.select();
     try { document.execCommand("copy"); } catch (e) {}
   }
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(json).then(function () {
+    navigator.clipboard.writeText(text).then(function () {
       document.getElementById("downloadOk").style.display = "block";
     }, fallback);
   } else fallback();
@@ -636,6 +698,7 @@ document.getElementById("skipBtn").onclick = function () { recordSet(true); };
 document.getElementById("exitBtn").onclick = function () { finish(true); };
 document.getElementById("downloadBtn").onclick = doDownload;
 document.getElementById("copyBtn").onclick = doCopy;
+document.getElementById("emailBtn").onclick = doEmail;
 
 checkStorage();
 initIntro();

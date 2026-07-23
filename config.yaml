@@ -13,6 +13,11 @@ survey:
     that is LEAST important. Tap a name to read its full description.
     You can stop at any time: every screen you complete counts.
 
+  # Where the "Email my results" button sends results. Set this to your own
+  # address before building; leave empty to hide the button (download-only).
+  return_email: ""
+  return_subject: "Use case survey results"
+
   # Dropdown choices offered to the respondent. Edit freely.
   roles:
     - Operator
@@ -57,3 +62,14 @@ resolve:
   bt_alpha: 0.05             # Bradley-Terry regularization (keeps sparse data solvable)
   top_n: 10                  # "P(top-10)" column refers to this N
   lineage: strict            # strict = current items only | inherit = predecessor votes count
+
+# Optional: pull_email.py reads results out of your mailbox automatically.
+# Works with any IMAP-enabled account (password is prompted, never stored).
+# Corporate O365 tenants sometimes disable IMAP — the manual fallback is
+# simply dragging emails/attachments into data/inbox/.
+email_pull:
+  imap_server: ""            # e.g. outlook.office365.com or imap.gmail.com
+  imap_port: 993
+  username: ""               # usually your email address
+  mailbox: "INBOX"
+  subject_contains: "Use case survey results"

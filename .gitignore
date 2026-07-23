@@ -9,3 +9,5 @@ data/out/*
 !data/archive/.gitkeep
 !data/out/.gitkeep
 data/*_with_ids.csv
+data/decoded_codes/
+data/.pulled_messages.json

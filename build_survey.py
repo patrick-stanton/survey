@@ -19,6 +19,7 @@ import yaml
 
 from ucsurvey import catalog as cat
 from ucsurvey import design
+from ucsurvey.compact import design_hash
 
 HERE = Path(__file__).parent
 TEMPLATE = HERE / "template" / "survey_template.html"
@@ -56,9 +57,11 @@ def build_payload(df, cfg: dict) -> dict:
     )
     design.check_master(continuation, item_ids, set_size)
 
-    return {
+    payload = {
         "title": str(survey.get("title", "Use Case Prioritization Survey")),
         "intro": " ".join(str(survey.get("intro", "")).split()),
+        "returnEmail": str(survey.get("return_email") or "").strip(),
+        "returnSubject": str(survey.get("return_subject") or "Use case survey results"),
         "roles": [str(r) for r in survey.get("roles", ["Other"])],
         "organizations": [str(o) for o in survey.get("organizations", ["Other"])],
         "catalog": [
@@ -76,6 +79,8 @@ def build_payload(df, cfg: dict) -> dict:
         "buildSeed": seed,
         "builtAt": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
     }
+    payload["designHash"] = design_hash(payload)
+    return payload
 
 
 def main(argv=None) -> int:
@@ -97,6 +102,11 @@ def main(argv=None) -> int:
               "      future exports carry them — they are the permanent key.\n")
 
     payload = build_payload(df, cfg)
+    if payload["returnEmail"]:
+        print(f"Results will be emailed to: {payload['returnEmail']}")
+    else:
+        print("NOTE: survey.return_email is empty in config.yaml — the 'Email my "
+              "results' button will be hidden (download-only).")
 
     html = TEMPLATE.read_text(encoding="utf-8")
     if MARKER not in html:
