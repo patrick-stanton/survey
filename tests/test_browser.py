@@ -1,5 +1,5 @@
 """Drives the built survey in a real headless Chromium via Playwright:
-completes the metadata form, answers screens (including a skip and an
+completes the name/email form, answers screens (including a skip and an
 early exit), downloads the results file, and checks its contents.
 
 Skipped automatically when Playwright/Chromium aren't installed — this is a
@@ -60,9 +60,6 @@ def test_full_short_session_with_download(survey_html, tmp_path):
 
         page.fill("#fName", "Test Person")
         page.fill("#fEmail", "test.person@example.com")
-        page.select_option("#fRole", index=1)
-        page.select_option("#fOrg", index=1)
-        page.locator("#famRow button").nth(3).click()
         page.locator("#metaNext").click()
 
         # choose the short arm (first budget button)
@@ -73,6 +70,11 @@ def test_full_short_session_with_download(survey_html, tmp_path):
             answer_screen(page, best_pos=i % 4, worst_pos=(i + 2) % 4)
         page.locator("#skipBtn").click()
         page.locator("#exitBtn").click()
+
+        # the finish screen leads with the big send button (return_email is
+        # set in config.yaml); the copy-code button is gone
+        assert page.locator("#emailBtn").is_visible()
+        assert page.locator("#copyBtn").count() == 0
 
         with page.expect_download() as dl:
             page.locator("#downloadBtn").click()
@@ -104,31 +106,3 @@ def test_full_short_session_with_download(survey_html, tmp_path):
         result["designSeed"],
     )
     assert [s["shown"] for s in result["sets"]] == expected[:4]
-
-
-def test_resume_after_abort(survey_html):
-    with pw.sync_playwright() as p:
-        browser = launch_chromium(p)
-        ctx = browser.new_context()
-        page = ctx.new_page()
-        page.goto(survey_html.as_uri())
-        page.locator("#startBtn").click()
-        page.fill("#fName", "Abort Tester")
-        page.fill("#fEmail", "abort@example.com")
-        page.select_option("#fRole", index=2)
-        page.select_option("#fOrg", index=2)
-        page.locator("#famRow button").nth(2).click()
-        page.locator("#metaNext").click()
-        page.locator("#budgetButtons .btn").first.click()
-        answer_screen(page)
-        answer_screen(page)
-        # simulate a crash: navigate away without downloading
-        page.goto("about:blank")
-
-        page.goto(survey_html.as_uri())  # same browser profile -> localStorage
-        resume = page.locator("#resumeBtn")
-        assert resume.is_visible()
-        resume.click()
-        # continues at screen 3 of the same session
-        assert "Screen 3" in page.locator("#taskCount").inner_text()
-        browser.close()

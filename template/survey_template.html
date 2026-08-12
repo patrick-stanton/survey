@@ -53,13 +53,6 @@
   .btn.secondary { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
   .btn.big { width: 100%; text-align: left; padding: 16px 18px; margin-top: 12px; }
   .btnrow { margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; }
-  .famrow { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
-  .famrow button {
-    flex: 1; min-width: 52px; padding: 10px 6px; border: 1px solid var(--line);
-    background: #fff; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--ink);
-  }
-  .famrow button[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); font-weight: 700; }
-  .famlabels { display: flex; justify-content: space-between; margin-top: 3px; }
   .error { color: var(--danger); font-size: 13px; margin-top: 8px; min-height: 18px; }
   .notice { background: var(--worst-soft); border: 1px solid #ecc9a0; border-radius: 8px;
     padding: 10px 12px; font-size: 13px; margin-top: 12px; display: none; }
@@ -75,14 +68,11 @@
   }
   .card.isBest { border-color: var(--best); box-shadow: 0 0 0 2px var(--best-soft); }
   .card.isWorst { border-color: var(--worst); box-shadow: 0 0 0 2px var(--worst-soft); }
-  .cardtop { cursor: pointer; }
   .cardname { font-weight: 600; font-size: 15px; }
   .chip { display: inline-block; font-size: 11.5px; color: var(--muted); background: var(--bg);
     border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; margin-top: 5px; }
   .keyhint { float: right; color: var(--muted); font-size: 12px; border: 1px solid var(--line);
     border-radius: 5px; padding: 0 6px; }
-  .desc { font-size: 13.5px; color: var(--muted); display: none; }
-  .card.open .desc { display: block; }
   .pickrow { display: flex; gap: 8px; margin-top: auto; }
   .pickrow button {
     flex: 1; padding: 9px 4px; font-size: 13.5px; font-weight: 600; border-radius: 8px;
@@ -97,6 +87,19 @@
   .kbd { color: var(--muted); font-size: 12.5px; }
 
   .bigstat { font-size: 34px; font-weight: 700; }
+  .sendwrap { text-align: center; margin: 26px 0 10px; }
+  .btn.send {
+    font-size: 20px; font-weight: 800; padding: 18px 44px; border-radius: 14px;
+    animation: sendpulse 1.6s ease-in-out infinite;
+  }
+  /* box-shadow only — a transform here would keep the button's bounding box
+     perpetually "unstable" and break automated (Playwright) clicks */
+  @keyframes sendpulse {
+    0%   { box-shadow: 0 0 0 0 rgba(31,111,235,.6); }
+    70%  { box-shadow: 0 0 0 18px rgba(31,111,235,0); }
+    100% { box-shadow: 0 0 0 0 rgba(31,111,235,0); }
+  }
+  @media (prefers-reduced-motion: reduce) { .btn.send { animation: none; } }
   textarea#copyArea { width: 100%; height: 140px; font-family: ui-monospace, Consolas, monospace;
     font-size: 11px; margin-top: 10px; display: none; }
   .checkmark { color: var(--best); font-weight: 700; }
@@ -124,7 +127,6 @@
         use “Exit &amp; download” before closing it.</div>
       <div class="btnrow">
         <button class="btn" id="startBtn" type="button">Start</button>
-        <button class="btn secondary" id="resumeBtn" type="button" style="display:none">Resume my previous session</button>
       </div>
     </div>
   </section>
@@ -132,19 +134,12 @@
   <section id="screen-meta" class="screen">
     <div class="panel">
       <h2>About you</h2>
-      <p class="muted small">Used to group results (for example, how operators’ priorities
-        differ from maintainers’) and to follow up if your answers raise good questions.</p>
+      <p class="muted small">So we know whose answers these are and can follow up
+        if your answers raise good questions.</p>
       <label for="fName">Name</label>
       <input type="text" id="fName" autocomplete="name">
       <label for="fEmail">Email</label>
       <input type="email" id="fEmail" autocomplete="email">
-      <label for="fRole">Your role</label>
-      <select id="fRole"></select>
-      <label for="fOrg">Your organization</label>
-      <select id="fOrg"></select>
-      <label>How familiar are you with this system and its use cases?</label>
-      <div class="famrow" id="famRow" role="group" aria-label="Familiarity, 1 low to 5 high"></div>
-      <div class="famlabels"><span class="muted small">1 — new to it</span><span class="muted small">5 — expert</span></div>
       <div class="error" id="metaError"></div>
       <div class="btnrow"><button class="btn" id="metaNext" type="button">Continue</button></div>
     </div>
@@ -173,7 +168,8 @@
       <span class="kbd">Keys: 1–4 pick most, then least · Enter next</span>
       <button class="btn" id="nextBtn" type="button" disabled>Next</button>
     </div>
-    <p class="muted small" style="margin-top:8px">Tap a use case name to read its description.</p>
+    <p class="muted small" style="margin-top:8px">Full use case descriptions are in the
+      spreadsheet provided with this survey — keep it open alongside as you prioritize.</p>
   </section>
 
   <section id="screen-break" class="screen">
@@ -192,11 +188,15 @@
     <div class="panel">
       <h2 id="finishTitle">Thank you!</h2>
       <p id="finishSummary"></p>
-      <p class="muted small" id="finishHowTo">Last step — takes ten seconds:</p>
+      <p id="finishHowTo"></p>
+      <div class="sendwrap" id="sendWrap" style="display:none">
+        <button class="btn send" id="emailBtn" type="button">Send Your Results</button>
+        <p class="muted small" style="margin-top:14px">This opens a ready-to-send email
+          in your mail app (e.g. Outlook) with your results included — add any thoughts
+          you’d like to share, then press <strong>Send</strong>.</p>
+      </div>
       <div class="btnrow">
-        <button class="btn" id="emailBtn" type="button" style="display:none">Email my results</button>
         <button class="btn secondary" id="downloadBtn" type="button">Download results file</button>
-        <button class="btn secondary" id="copyBtn" type="button">Copy results code</button>
       </div>
       <p class="small" id="downloadOk" style="display:none;margin-top:10px"><span class="checkmark">✓</span> Done — if an email draft opened, just press Send. Otherwise email us the downloaded file.</p>
       <textarea id="copyArea" readonly aria-label="Survey results JSON"></textarea>
@@ -361,20 +361,6 @@ function saveState() {
   if (!storageOk || !state) return;
   try { localStorage.setItem(STORE_PREFIX + state.sessionId, JSON.stringify(state)); } catch (e) {}
 }
-function findSavedSessions() {
-  if (!storageOk) return [];
-  var out = [];
-  try {
-    for (var i = 0; i < localStorage.length; i++) {
-      var k = localStorage.key(i);
-      if (k.indexOf(STORE_PREFIX) === 0 && k.indexOf("__test__") < 0) {
-        try { out.push(JSON.parse(localStorage.getItem(k))); } catch (e) {}
-      }
-    }
-  } catch (e) {}
-  out.sort(function (a, b) { return (b.startedAt || "").localeCompare(a.startedAt || ""); });
-  return out;
-}
 
 /* ---------- design ---------- */
 function planScreens(st) {
@@ -415,58 +401,15 @@ function initIntro() {
   document.getElementById("hTitle").textContent = DATA.title;
   document.getElementById("introTitle").textContent = DATA.title;
   document.getElementById("introText").textContent = DATA.intro;
-  var saved = findSavedSessions().filter(function (s) { return s.sets.length > 0 && !s.finished; });
-  if (saved.length > 0) {
-    var btn = document.getElementById("resumeBtn");
-    btn.style.display = "inline-block";
-    btn.onclick = function () {
-      state = saved[0];
-      state.plan = planScreens(state);
-      updateProgress();
-      nextTask();
-    };
-  }
   document.getElementById("startBtn").onclick = function () { show("screen-meta"); };
 }
-function fillSelect(id, options) {
-  var sel = document.getElementById(id);
-  sel.innerHTML = "";
-  var ph = document.createElement("option");
-  ph.value = ""; ph.textContent = "— choose —";
-  sel.appendChild(ph);
-  options.forEach(function (o) {
-    var op = document.createElement("option");
-    op.value = o; op.textContent = o; sel.appendChild(op);
-  });
-}
-var famValue = 0;
 function initMeta() {
-  fillSelect("fRole", DATA.roles);
-  fillSelect("fOrg", DATA.organizations);
-  var row = document.getElementById("famRow");
-  for (var v = 1; v <= 5; v++) {
-    (function (val) {
-      var b = document.createElement("button");
-      b.type = "button"; b.textContent = val; b.setAttribute("aria-pressed", "false");
-      b.onclick = function () {
-        famValue = val;
-        row.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
-        b.setAttribute("aria-pressed", "true");
-      };
-      row.appendChild(b);
-    })(v);
-  }
   document.getElementById("metaNext").onclick = function () {
     var name = document.getElementById("fName").value.trim();
     var email = document.getElementById("fEmail").value.trim();
-    var role = document.getElementById("fRole").value;
-    var org = document.getElementById("fOrg").value;
     var err = "";
     if (!name) err = "Please enter your name.";
     else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) err = "Please enter a valid email address.";
-    else if (!role) err = "Please choose your role.";
-    else if (!org) err = "Please choose your organization.";
-    else if (!famValue) err = "Please rate your familiarity (1–5).";
     document.getElementById("metaError").textContent = err;
     if (err) return;
     var sessionId = "s" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 1e8).toString(36);
@@ -474,7 +417,9 @@ function initMeta() {
       schemaVersion: 1,
       tool: "ucsurvey",
       sessionId: sessionId,
-      respondent: { name: name, email: email.toLowerCase(), role: role, organization: org, familiarity: famValue },
+      // role/organization/familiarity stay in the results format (blank) so
+      // the ingest pipeline and archive schema are unchanged.
+      respondent: { name: name, email: email.toLowerCase(), role: "", organization: "", familiarity: "" },
       catalogVersionHash: DATA.catalogVersionHash,
       arm: null,
       designSeed: email.toLowerCase() + "|" + sessionId,
@@ -552,9 +497,6 @@ function renderTask() {
       (it.category ? "<span class='chip'></span>" : "");
     top.querySelector(".cardname").textContent = it.name;
     if (it.category) top.querySelector(".chip").textContent = it.category;
-    top.onclick = function () { card.classList.toggle("open"); };
-    var desc = document.createElement("div");
-    desc.className = "desc"; desc.textContent = it.description || "(no description)";
     var picks = document.createElement("div");
     picks.className = "pickrow";
     var bb = document.createElement("button");
@@ -566,7 +508,7 @@ function renderTask() {
     wb.setAttribute("aria-pressed", "false");
     wb.onclick = function () { setPick("worst", itemId); };
     picks.appendChild(bb); picks.appendChild(wb);
-    card.appendChild(top); card.appendChild(desc); card.appendChild(picks);
+    card.appendChild(top); card.appendChild(picks);
     wrap.appendChild(card);
   });
   screenShownAt = Date.now();
@@ -639,13 +581,22 @@ function finish(early) {
       ? "You haven't answered any screens. You can go back and answer a few — even two or three help."
       : "You compared use cases on " + answered + " screens" +
         (complete ? " — the full set. " : ". ") +
-        "Your answers are packaged below.";
-  var hasEmail = !!DATA.returnEmail;
-  document.getElementById("emailBtn").style.display =
-    hasEmail && answered > 0 ? "inline-block" : "none";
-  document.getElementById("finishHowTo").textContent = hasEmail
-    ? "Last step — one click: “Email my results” opens a pre-addressed draft; just press Send."
-    : "Last step — takes ten seconds: download your results file and email it back to us.";
+        "Your answers are packaged and ready to send.";
+  var showSend = !!DATA.returnEmail && answered > 0;
+  document.getElementById("sendWrap").style.display = showSend ? "block" : "none";
+  var howTo = document.getElementById("finishHowTo");
+  howTo.style.display = answered > 0 ? "" : "none";
+  // finish() re-runs (go back / keep going / exit), so set the text on every
+  // call — never let one branch's text leak into the other.
+  howTo.textContent = "";
+  if (showSend) {
+    var strong = document.createElement("strong");
+    strong.textContent = "One last step — your answers are still on this " +
+      "computer. They only reach us when you send them:";
+    howTo.appendChild(strong);
+  } else {
+    howTo.textContent = "Last step — takes ten seconds: download your results file and email it back to us.";
+  }
   document.getElementById("resumeRow").style.display = complete ? "none" : "flex";
   document.getElementById("backToTask").onclick = function () { nextTask(); };
   var moreRow = document.getElementById("moreRow");
@@ -705,8 +656,11 @@ function doEmail() {
   // and we also trigger the file download so the respondent can attach it.
   var csvText = buildResultCsvText();
   doDownload();
+  var thoughts = "My thoughts on these use cases or this survey (optional — " +
+    "type anything you'd like us to know here):\n\n\n";
   var body = "Hello,\n\nMy use case survey results are below (and the file " +
     resultFilename() + " just downloaded — you can attach it too).\n\n" +
+    thoughts +
     "----- results -----\n" + csvText + "----- end -----\n\n" +
     state.respondent.name + "\n";
   var url = "mailto:" + DATA.returnEmail +
@@ -718,7 +672,7 @@ function doEmail() {
       "?subject=" + encodeURIComponent(DATA.returnSubject + " - " + state.respondent.name) +
       "&body=" + encodeURIComponent(
         "Hello,\n\nMy survey results file just downloaded (" + resultFilename() +
-        ") — please find it attached.\n\n" + state.respondent.name + "\n");
+        ") — please find it attached.\n\n" + thoughts + state.respondent.name + "\n");
   }
   document.getElementById("downloadOk").style.display = "block";
   window.location.href = url;
@@ -729,20 +683,6 @@ function showCopyArea(text, msg) {
   ta.focus(); ta.select();
   if (msg) alert(msg);
 }
-function doCopy() {
-  var text = buildResultCsvText();
-  function fallback() {
-    var ta = document.getElementById("copyArea");
-    ta.value = text; ta.style.display = "block"; ta.focus(); ta.select();
-    try { document.execCommand("copy"); } catch (e) {}
-  }
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(function () {
-      document.getElementById("downloadOk").style.display = "block";
-    }, fallback);
-  } else fallback();
-}
-
 /* ---------- keyboard ---------- */
 document.addEventListener("keydown", function (ev) {
   if (!document.getElementById("screen-task").classList.contains("active")) return;
@@ -760,7 +700,6 @@ document.getElementById("nextBtn").onclick = function () { recordSet(false); };
 document.getElementById("skipBtn").onclick = function () { recordSet(true); };
 document.getElementById("exitBtn").onclick = function () { finish(true); };
 document.getElementById("downloadBtn").onclick = doDownload;
-document.getElementById("copyBtn").onclick = doCopy;
 document.getElementById("emailBtn").onclick = doEmail;
 
 checkStorage();

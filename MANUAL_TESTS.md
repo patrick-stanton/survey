@@ -10,14 +10,14 @@ pip install -r requirements.txt pytest
 python -m pytest tests/ -v
 ```
 
-Expect **61 passed** (a few *skip* without Node/Playwright — dev-only, harmless).
+Expect **67 passed** (a few *skip* without Node/Playwright — dev-only, harmless).
 What the key tests prove:
 
 | Test file | Proves |
 |---|---|
 | `test_end_to_end.py` | A population with a **known correct answer** — including early-quitters and a random-clicker — is recovered by every profile through the real scripts; a catalog **merge** works in both lineage modes; two resolves are **byte-identical** (reproducible). |
 | `test_security.py` | Forged/huge codes are rejected instantly (no hang); malformed JSON becomes a clean rejection; **one bad file can't abort the batch**; mega-screen injection blocked; session tampering blocked; roster rejects uninvited emails. |
-| `test_browser.py` | A real headless browser completes the survey, **aborts and resumes**, downloads, and the emailed code decodes to the same answers. |
+| `test_browser.py` | A real headless browser completes the survey (including a skip and an **early exit**), downloads, and the results CSV parses and checksum-verifies. |
 | `test_design.py` | Every use case is shown equally often (±1); no screen repeats an item; the design is connected. |
 
 ## 1. One-command end-to-end demo (no survey-taking, ~30 s)
@@ -42,16 +42,15 @@ Do this once end-to-end before sending to real people.
 - [ ] `python build_survey.py` → confirm `dist/survey.html` and `dist/survey.zip` exist.
 
 **Take it (in a browser)**
-- [ ] Open `dist/survey.html`. Fill in the metadata form — confirm it blocks a
-      bad email and an empty role.
-- [ ] Choose the ~10-min budget. Answer a few screens. Tap a card name → the
-      description expands.
+- [ ] Open `dist/survey.html`. Fill in your name and email — confirm it blocks a
+      bad email and an empty name.
+- [ ] Choose the ~10-min budget. Answer a few screens.
 - [ ] Use keyboard keys 1–4 and Enter — confirm they pick and advance.
-- [ ] **Abort test:** close the tab mid-survey, reopen `survey.html` → confirm
-      the "Resume my previous session" button appears and continues where you left off.
-- [ ] Finish (or click **Exit & download**). Click **Email my results** → confirm
-      your mail client opens **pre-addressed** with a `UCS1…` code in the body. Send it.
-- [ ] Also click **Download results file** → confirm a `.json` lands in Downloads.
+- [ ] Finish (or click **Exit & download**). Click the big pulsing **Send Your
+      Results** button → confirm your mail client opens **pre-addressed** with the
+      results CSV and a spot for your own comments in the body (the `.csv` file
+      also downloads so you can attach it). Send it.
+- [ ] Also click **Download results file** → confirm a `.csv` lands in Downloads.
 
 **Collect & resolve**
 - [ ] Put the `.json` (and/or save the email as `.txt`) into `data/inbox/`.

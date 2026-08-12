@@ -41,10 +41,11 @@ resampling our respondents thousands of times it reports, for each use case, a
 difference between "#1 by a hair in a noisy average" and "securely the top
 priority" — and it tells us when we simply need more responses before deciding.
 
-**Seeing it from different angles.** Because we capture each respondent's role and
-organization, we can view the same data through **lenses**: do operators and
-maintainers agree? Where do organizations diverge? Contested use cases become
-deliberate conversations, not statistical noise.
+**Seeing it from different angles.** Because every response is tied to a named
+respondent, we can view the same data through **lenses** (grouping respondents
+by role or organization from our invite list): do operators and maintainers
+agree? Where do organizations diverge? Contested use cases become deliberate
+conversations, not statistical noise.
 
 **Where it lands.** Results flow back onto the use cases in our Cameo model —
 each one carrying its score, rank, confidence range, and how many people weighed

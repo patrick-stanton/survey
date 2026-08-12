@@ -65,9 +65,9 @@ defer the server unless scale demands it.
 
 ---
 
-## Part B — How results come back to you (3 options)
+## Part B — How results come back to you (2 options)
 
-### 1. One-click "Email my results" + mailbox pull ✓ *(recommended)*
+### 1. One-click "Send Your Results" + mailbox pull ✓ *(recommended)*
 The finish screen opens the respondent's own mail client, pre-addressed to an
 address **you set at build time** (`survey.return_email` in `config.yaml`), with
 the whole session encoded as a short code **in the body** — no attachment. They
@@ -92,20 +92,11 @@ SharePoint/OneDrive folder you point them to; you sync that folder to
 - **Cons:** More steps for the respondent (download, then upload); requires a drop
   location everyone can write to.
 
-### 3. Copy code → paste anywhere
-Respondents click "Copy results code" and paste the one-line code into whatever
-channel is easy — a Teams/Slack message, a reply, a ticket. You collect the codes
-into a `.txt` for ingest.
-- **Pros:** Ultimate flexibility when email and file-drops are both awkward;
-  survives the most locked-down setups.
-- **Cons:** Manual gathering; easy for a respondent to paste incompletely (the
-  code is one unbroken token, which helps).
-
-All three funnel into the same `data/inbox/` → `ingest.py` → archive, and can be
+Both funnel into the same `data/inbox/` → `ingest.py` → archive, and can be
 mixed freely within one collection effort.
 
 **Recommendation:** Option 1 with a dedicated return mailbox as the primary,
-Option 3 as the escape hatch for anyone whose mail client won't cooperate.
+Option 2 as the escape hatch for anyone whose mail client won't cooperate.
 
 ---
 

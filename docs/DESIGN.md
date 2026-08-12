@@ -22,8 +22,8 @@ need a **prioritization of those use cases** that is:
   use cases can be reworded, merged, or added between rounds.
 - **Defensible** — grounded in established method, reproducible from raw data,
   and honest about uncertainty.
-- **Multi-perspective** — viewable through "lenses" (role, organization) so we
-  see agreement and conflict, not just an average.
+- **Multi-perspective** — viewable through "lenses" (role, organization — when
+  those are collected) so we see agreement and conflict, not just an average.
 
 The operating decision this serves is blunt: **however we rank them, we intend to
 build the top-ranked capability next.** That raises the stakes on two things the
@@ -42,7 +42,7 @@ being *honest about how sure we are*.
                                             │  distributed by email / SharePoint
                                             ▼
                                      respondents answer  (10–60 min, abort-safe)
-                                            │  "Email my results" → short code
+                                            │  "Send Your Results" → pre-addressed email
                                             ▼
    pull_email.py / manual ──► data/inbox/ ──► ingest.py ──► data/archive/  (append-only)
                                                                 │  pooled across all rounds
@@ -143,7 +143,7 @@ derived deterministically. This means we don't need to send back the full data �
 only the **picks**, which compress to two bytes per screen. A whole session fits
 in a short text code that lives **in the email body itself**.
 
-So the survey's **"Email my results"** button opens the respondent's own mail
+So the survey's **"Send Your Results"** button opens the respondent's own mail
 client, pre-addressed to us (an address we set at build time), with the code
 already in the body. They press Send. No attachment to find, no file to save, no
 download dialog — the single biggest friction point in "just fill out the form"
@@ -153,9 +153,8 @@ is removed.
 
 | Path | Respondent does | We do |
 |---|---|---|
-| **One-click email** ✓ | Clicks "Email my results", presses Send | `pull_email.py` reads the mailbox (IMAP), or save emails as `.txt` |
-| **Download file** | Clicks "Download results file" | Drop the `.json` into `data/inbox/` |
-| **Copy code** | Clicks "Copy results code", pastes anywhere | Paste into a `.txt` in `data/inbox/` |
+| **One-click email** ✓ | Clicks "Send Your Results", presses Send | `pull_email.py` reads the mailbox (IMAP), or save emails as `.txt` |
+| **Download file** | Clicks "Download results file" | Drop the file into `data/inbox/` |
 
 `ingest.py` accepts all forms interchangeably. See
 [DEPLOYMENT_OPTIONS.md](DEPLOYMENT_OPTIONS.md) §"Getting data back" for the
@@ -228,8 +227,9 @@ interval, so thin data shows up as *wide ranges*, never false precision.
 
 ## 8. The lenses — prioritization from multiple perspectives
 
-Because each response carries the respondent's role and organization, the same
-pooled data yields multiple views:
+The results format carries role and organization fields (the streamlined survey
+leaves them blank — it asks only name and email — but they can be filled from an
+invite roster or a future build), so the same pooled data yields multiple views:
 
 - **Overall ranking** — the primary priority order with confidence intervals.
 - **By role** (operators vs. maintainers vs. engineers…) and **by organization** —

@@ -10,15 +10,17 @@ survey:
   intro: >
     Help us prioritize the system's use cases. On each screen you'll see
     four use cases — tap the one that is MOST important to you and the one
-    that is LEAST important. Tap a name to read its full description.
+    that is LEAST important. Full descriptions are in the use case
+    spreadsheet provided with this survey; keep it handy as you go.
     You can stop at any time: every screen you complete counts.
 
-  # Where the "Email my results" button sends results. Set this to your own
+  # Where the "Send Your Results" button sends results. Set this to your own
   # address before building; leave empty to hide the button (download-only).
-  return_email: ""
+  return_email: "patrick.stanton@arcfield.com"
   return_subject: "Use case survey results"
 
-  # Dropdown choices offered to the respondent. Edit freely.
+  # No longer asked in the survey (About-you collects name + email only);
+  # kept so the results format and ingest pipeline are unchanged.
   roles:
     - Operator
     - Maintainer

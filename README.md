@@ -85,8 +85,8 @@ python build_survey.py
   every future export carries them. These ids — not names, which get reworded —
   are what lets responses, re-surveys, and Cameo re-imports line up.
 - Output: `dist/survey.html` and `dist/survey.zip` (~40 KB).
-- Edit `config.yaml` to change the title, intro text, role/organization
-  dropdowns, or time-budget arms, then rebuild.
+- Edit `config.yaml` to change the title, intro text, return email, or
+  time-budget arms, then rebuild.
 
 **Distribute the `.zip` or a SharePoint/OneDrive link** — many Outlook/M365
 tenants block bare `.html` attachments as phishing suspects.
@@ -96,12 +96,12 @@ tenants block bare `.html` attachments as phishing suspects.
 Before building, set `survey.return_email` in `config.yaml` to the address where
 results should land (yours, or a dedicated mailbox for the effort).
 
-Respondents open `survey.html`, fill in who they are, pick a time budget, and
-answer best/worst screens. Their browser saves progress after every screen (they
-can close and resume). When they finish — or stop early — they get a **legible
-results CSV**: **Download results file** saves it, and **Email my results** opens
-a pre-addressed draft with the CSV both attached-and-pasted-in-the-body so they
-just press Send. The CSV carries an embedded checksum (catches corruption); its
+Respondents open `survey.html`, fill in their name and email, pick a time budget,
+and answer best/worst screens. When they finish — or stop early — they get a
+**legible results CSV**: the big **Send Your Results** button opens a
+pre-addressed draft with the CSV pasted in the body (and downloads the file so
+they can attach it) so they just press Send; **Download results file** saves it
+directly. The CSV carries an embedded checksum (catches corruption); its
 integrity against fabrication is enforced at ingest (see [SECURITY.md](SECURITY.md)).
 
 ### 4. Collect the CSVs into a folder and ingest
@@ -203,7 +203,7 @@ The end-to-end test simulates a population with a *known* correct priority
 order — including people who quit early and one random clicker — pushes their
 files through the real scripts, and asserts the truth is recovered and the
 clicker flagged. Browser tests (optional, need `playwright`) drive the real
-survey in headless Chromium, including abort-and-resume and the download.
+survey in headless Chromium, including an early exit and the download.
 
 Full hands-on and edge-case checklist: [MANUAL_TESTS.md](MANUAL_TESTS.md).
 Security posture and threat model: [SECURITY.md](SECURITY.md).
