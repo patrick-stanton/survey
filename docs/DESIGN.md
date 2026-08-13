@@ -42,7 +42,7 @@ being *honest about how sure we are*.
                                             │  distributed by email / SharePoint
                                             ▼
                                      respondents answer  (10–60 min, abort-safe)
-                                            │  "Send Your Results" → pre-addressed email
+                                            │  "Send Your Results" → email + .csv attached
                                             ▼
    pull_email.py / manual ──► data/inbox/ ──► ingest.py ──► data/archive/  (append-only)
                                                                 │  pooled across all rounds
@@ -143,18 +143,25 @@ derived deterministically. This means we don't need to send back the full data �
 only the **picks**, which compress to two bytes per screen. A whole session fits
 in a short text code that lives **in the email body itself**.
 
-So the survey's **"Send Your Results"** button opens the respondent's own mail
-client, pre-addressed to us (an address we set at build time), with the code
-already in the body. They press Send. No attachment to find, no file to save, no
-download dialog — the single biggest friction point in "just fill out the form"
-is removed.
+**What we ship instead.** The compact code is retained on the *reading* side
+(`ingest.py` still decodes legacy `UCS1` codes) but is no longer what respondents
+send. The **"Send Your Results"** button downloads the legible results `.csv` and
+opens the respondent's own mail client, pre-addressed to us (an address we set at
+build time), with a body that says only ATTACH .CSV THAT DOWNLOADED TO EMAIL plus
+a prompt for their own comments. They attach the file and press Send.
+
+**Why the file rather than the body:** a `mailto:` body is subject to
+mail-client length limits that vary by tenant and version, and a truncated body
+is a lost response. An attachment has no such limit, and the body stays ~230
+characters no matter how long the session ran. The cost is one drag-and-drop,
+which the finish screen and the email both call out in capitals.
 
 ### Return paths (all funnel to the same archive)
 
 | Path | Respondent does | We do |
 |---|---|---|
-| **One-click email** ✓ | Clicks "Send Your Results", presses Send | `pull_email.py` reads the mailbox (IMAP), or save emails as `.txt` |
-| **Download file** | Clicks "Download results file" | Drop the file into `data/inbox/` |
+| **Email + attachment** ✓ | Presses "Send Your Results", attaches the `.csv`, presses Send | `pull_email.py` saves attachments (IMAP), or save them by hand |
+| **Download file** | Clicks "Download results file" | Drop the file into the inbox folder |
 
 `ingest.py` accepts all forms interchangeably. See
 [DEPLOYMENT_OPTIONS.md](DEPLOYMENT_OPTIONS.md) §"Getting data back" for the

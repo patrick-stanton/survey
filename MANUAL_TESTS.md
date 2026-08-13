@@ -47,9 +47,10 @@ Do this once end-to-end before sending to real people.
 - [ ] Choose the ~10-min budget. Answer a few screens.
 - [ ] Use keyboard keys 1–4 and Enter — confirm they pick and advance.
 - [ ] Finish (or click **Exit & download**). Click the big pulsing **Send Your
-      Results** button → confirm your mail client opens **pre-addressed** with the
-      results CSV and a spot for your own comments in the body (the `.csv` file
-      also downloads so you can attach it). Send it.
+      Results** button → confirm the `.csv` downloads and your mail client opens
+      **pre-addressed**, with only the ATTACH instruction and a prompt for your
+      thoughts in the body. **Attach the downloaded `.csv`**, then send it.
+- [ ] Confirm the finish screen shows the attach warning and the exact filename.
 - [ ] Also click **Download results file** → confirm a `.csv` lands in Downloads.
 
 **Collect & resolve**

@@ -98,10 +98,10 @@ results should land (yours, or a dedicated mailbox for the effort).
 
 Respondents open `survey.html`, fill in their name and email, pick a time budget,
 and answer best/worst screens. When they finish — or stop early — they get a
-**legible results CSV**: the big **Send Your Results** button opens a
-pre-addressed draft with the CSV pasted in the body (and downloads the file so
-they can attach it) so they just press Send; **Download results file** saves it
-directly. The CSV carries an embedded checksum (catches corruption); its
+**legible results CSV**: the big **Send Your Results** button downloads that file
+and opens a pre-addressed draft telling them, in capitals, to attach it — the
+body holds nothing else but a prompt for their own comments. **Download results
+file** saves it without opening mail. The CSV carries an embedded checksum (catches corruption); its
 integrity against fabrication is enforced at ingest (see [SECURITY.md](SECURITY.md)).
 
 ### 4. Collect the CSVs into a folder and ingest

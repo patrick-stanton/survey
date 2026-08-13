@@ -100,6 +100,13 @@
     100% { box-shadow: 0 0 0 0 rgba(31,111,235,0); }
   }
   @media (prefers-reduced-motion: reduce) { .btn.send { animation: none; } }
+  .attachnote {
+    margin: 18px auto 0; max-width: 520px; font-weight: 800; font-size: 15.5px;
+    line-height: 1.35; color: var(--worst); background: var(--worst-soft);
+    border: 1.5px solid #e3ab6b; border-radius: 10px; padding: 13px 15px;
+  }
+  .filename { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px;
+    word-break: break-all; }
   textarea#copyArea { width: 100%; height: 140px; font-family: ui-monospace, Consolas, monospace;
     font-size: 11px; margin-top: 10px; display: none; }
   .checkmark { color: var(--best); font-weight: 700; }
@@ -191,14 +198,17 @@
       <p id="finishHowTo"></p>
       <div class="sendwrap" id="sendWrap" style="display:none">
         <button class="btn send" id="emailBtn" type="button">Send Your Results</button>
-        <p class="muted small" style="margin-top:14px">This opens a ready-to-send email
-          in your mail app (e.g. Outlook) with your results included — add any thoughts
-          you’d like to share, then press <strong>Send</strong>.</p>
+        <p class="attachnote">ATTACH THE .CSV FILE THAT JUST DOWNLOADED TO THE EMAIL,
+          THEN PRESS SEND. WITHOUT THE ATTACHED FILE WE RECEIVE NO ANSWERS.</p>
+        <p class="muted small" style="margin-top:12px">Pressing the button downloads your
+          results file and opens an email to us. Find the file in your
+          <strong>Downloads</strong> folder and drag it onto the email.<br>
+          <span class="filename" id="fileNameOut"></span></p>
       </div>
       <div class="btnrow">
         <button class="btn secondary" id="downloadBtn" type="button">Download results file</button>
       </div>
-      <p class="small" id="downloadOk" style="display:none;margin-top:10px"><span class="checkmark">✓</span> Done — if an email draft opened, just press Send. Otherwise email us the downloaded file.</p>
+      <p class="small" id="downloadOk" style="display:none;margin-top:10px"><span class="checkmark">✓</span> Your results file has downloaded. Attach it to the email draft, then press Send. If no draft opened, email the file to us yourself.</p>
       <textarea id="copyArea" readonly aria-label="Survey results JSON"></textarea>
       <div class="btnrow" id="moreRow" style="display:none">
         <button class="btn secondary" id="moreBtn" type="button"></button>
@@ -584,6 +594,7 @@ function finish(early) {
         "Your answers are packaged and ready to send.";
   var showSend = !!DATA.returnEmail && answered > 0;
   document.getElementById("sendWrap").style.display = showSend ? "block" : "none";
+  if (showSend) document.getElementById("fileNameOut").textContent = resultFilename();
   var howTo = document.getElementById("finishHowTo");
   howTo.style.display = answered > 0 ? "" : "none";
   // finish() re-runs (go back / keep going / exit), so set the text on every
@@ -654,26 +665,16 @@ function doDownload() {
 function doEmail() {
   // A pre-addressed draft. The full CSV is legible in the body (reliable path),
   // and we also trigger the file download so the respondent can attach it.
-  var csvText = buildResultCsvText();
+  // The downloaded .csv IS the payload — the respondent attaches it. The body
+  // carries only the attach instruction and room for their own comments, so it
+  // stays short (no mail-client length limit to trip) and never has to be read
+  // past. mailto bodies are plain text: ALL CAPS is the only emphasis there is.
   doDownload();
-  var thoughts = "My thoughts on these use cases or this survey (optional — " +
-    "type anything you'd like us to know here):\n\n\n";
-  var body = "Hello,\n\nMy use case survey results are below (and the file " +
-    resultFilename() + " just downloaded — you can attach it too).\n\n" +
-    thoughts +
-    "----- results -----\n" + csvText + "----- end -----\n\n" +
-    state.respondent.name + "\n";
+  var body = "ATTACH .CSV THAT DOWNLOADED TO EMAIL\n\n\n" +
+    "PLEASE ENTER YOUR SURVEY THOUGHTS HERE FOR OUR REVIEW:\n\n\n";
   var url = "mailto:" + DATA.returnEmail +
     "?subject=" + encodeURIComponent(DATA.returnSubject + " - " + state.respondent.name) +
     "&body=" + encodeURIComponent(body);
-  if (url.length > 6000) {
-    // Long session exceeds conservative mailto limits — fall back to attach-only.
-    url = "mailto:" + DATA.returnEmail +
-      "?subject=" + encodeURIComponent(DATA.returnSubject + " - " + state.respondent.name) +
-      "&body=" + encodeURIComponent(
-        "Hello,\n\nMy survey results file just downloaded (" + resultFilename() +
-        ") — please find it attached.\n\n" + thoughts + state.respondent.name + "\n");
-  }
   document.getElementById("downloadOk").style.display = "block";
   window.location.href = url;
 }

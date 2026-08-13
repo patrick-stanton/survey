@@ -42,6 +42,22 @@ def survey_html(tmp_path_factory):
     return out / "survey.html"
 
 
+def mailto_url(page):
+    """The draft the Send button would hand to the mail client.
+
+    Runs the shipped doEmail with only its navigation line replaced, so what we
+    inspect is the real body, not a copy of it that could drift.
+    """
+    return page.evaluate("""() => {
+      const src = doEmail.toString()
+        .replace('window.location.href = url;', 'return url;')
+        .replace(/^function doEmail/, 'function _de');
+      const saved = window.doDownload;
+      window.doDownload = () => {};
+      try { return eval('(' + src + ')')(); } finally { window.doDownload = saved; }
+    }""")
+
+
 def answer_screen(page, best_pos=0, worst_pos=3):
     cards = page.locator("#cards .card")
     cards.nth(best_pos).locator(".pickBest").click()
@@ -75,6 +91,18 @@ def test_full_short_session_with_download(survey_html, tmp_path):
         # set in config.yaml); the copy-code button is gone
         assert page.locator("#emailBtn").is_visible()
         assert page.locator("#copyBtn").count() == 0
+        # ...and it tells the respondent, unmissably, to attach the file
+        assert "ATTACH" in page.locator(".attachnote").inner_text()
+
+        # The email body carries the attach instruction and a prompt for the
+        # respondent's own comments — and never the results CSV itself, which
+        # travels as the attachment.
+        from urllib.parse import unquote
+        body = unquote(mailto_url(page))
+        assert "ATTACH .CSV THAT DOWNLOADED TO EMAIL" in body
+        assert "PLEASE ENTER YOUR SURVEY THOUGHTS HERE FOR OUR REVIEW" in body
+        assert "ucsurvey_csv" not in body
+        assert "checksum," not in body
 
         with page.expect_download() as dl:
             page.locator("#downloadBtn").click()

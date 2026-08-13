@@ -68,18 +68,20 @@ defer the server unless scale demands it.
 ## Part B — How results come back to you (2 options)
 
 ### 1. One-click "Send Your Results" + mailbox pull ✓ *(recommended)*
-The finish screen opens the respondent's own mail client, pre-addressed to an
-address **you set at build time** (`survey.return_email` in `config.yaml`), with
-the whole session encoded as a short code **in the body** — no attachment. They
-press Send. You collect with `pull_email.py` (IMAP), or by saving the emails as
-`.txt`.
-- **Pros:** Lowest possible friction — no download, no file handling; results
-  land in one mailbox; `pull_email.py` automates collection; works email-client-
+The finish screen downloads the results `.csv` and opens the respondent's own
+mail client, pre-addressed to an address **you set at build time**
+(`survey.return_email` in `config.yaml`), with a body that says only ATTACH .CSV
+THAT DOWNLOADED TO EMAIL plus a prompt for their comments. They attach the file
+and press Send. You collect with `pull_email.py` (IMAP saves attachments), or by
+saving the attachments by hand.
+- **Pros:** Results land in one mailbox; no length limit to trip regardless of
+  session length; `pull_email.py` automates collection; works email-client-
   agnostic (it's a standard `mailto:` link).
 - **Cons:** Relies on the respondent having a configured mail client (true for
-  virtually all corporate desktops); very long 60-minute sessions fall back to
-  attaching the downloaded file automatically; IMAP is disabled in some O365
-  tenants — then you save emails as `.txt` manually (still one drag).
+  virtually all corporate desktops) **and on them actually attaching the file** —
+  the finish screen and email body both say so in capitals, but a forgotten
+  attachment means no data (you'll see the email and can ask); IMAP is disabled
+  in some O365 tenants — then you save the attachments manually.
 - **Recommendation:** Use a **dedicated mailbox** (e.g. a shared/functional
   mailbox) as the return address so results don't clutter your inbox and
   `pull_email.py` has a clean folder to read.
